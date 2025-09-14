@@ -164,16 +164,27 @@ const ImageSlider: React.FC<ImageSliderProps> = ({ beforeImage, afterImage, adju
 
 // --- Main App Component ---
 export default function App() {
-  // State management for the component
+  // --- State Management ---
+  // Core functionality state
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [originalImage, setOriginalImage] = useState<string | null>(null);
   const [selectedStyle, setSelectedStyle] = useState<string | null>(null);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Image enhancement state
+  const [isEnhancing, setIsEnhancing] = useState<boolean>(false);
+  const [isEnhanced, setIsEnhanced] = useState(false);
+  const [initialFile, setInitialFile] = useState<File | null>(null);
+  const [initialImageUrl, setInitialImageUrl] = useState<string | null>(null);
+
+  // Saved looks state
   const [savedLooks, setSavedLooks] = useState<SavedLook[]>([]);
   const [isCurrentLookSaved, setIsCurrentLookSaved] = useState(false);
   const [activeLookId, setActiveLookId] = useState<number | null>(null);
+
+  // Adjustment state
   const [adjustments, setAdjustments] = useState<Adjustments>({
     brightness: 100,
     contrast: 100,
@@ -215,9 +226,13 @@ export default function App() {
         setOriginalImage(null);
         return;
       }
-
+      
+      const fileUrl = URL.createObjectURL(file);
       setUploadedFile(file);
-      setOriginalImage(URL.createObjectURL(file));
+      setOriginalImage(fileUrl);
+      setInitialFile(file);
+      setInitialImageUrl(fileUrl);
+      setIsEnhanced(false);
       setGeneratedImage(null);
       setError(null);
       setActiveLookId(null);
@@ -229,6 +244,64 @@ export default function App() {
   const handleStyleSelect = useCallback((style: string) => {
     setSelectedStyle(style);
   }, []);
+
+  // Enhances the original image to a studio-quality portrait
+  const handleEnhanceImage = useCallback(async () => {
+    if (!initialFile) return;
+
+    setIsEnhancing(true);
+    setError(null);
+
+    try {
+      const imagePart = await fileToGenerativePart(initialFile);
+      const textPart = { text: "Enhance this photo to look like a professional studio portrait. Improve the lighting to be dramatic and flattering, replace the background with a clean, neutral studio backdrop (like a soft grey or off-white), and increase the overall image sharpness and quality. It is crucial that the person's face, features, and expression remain completely unchanged." };
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash-image-preview',
+        contents: { parts: [imagePart, textPart] },
+        config: { responseModalities: [Modality.IMAGE, Modality.TEXT] },
+      });
+      
+      let enhancedImage: { data: string, mimeType: string } | null = null;
+      if (response.candidates && response.candidates.length > 0) {
+        for (const part of response.candidates[0].content.parts) {
+          if (part.inlineData) {
+            enhancedImage = { data: part.inlineData.data, mimeType: part.inlineData.mimeType };
+            break;
+          }
+        }
+      }
+
+      if (enhancedImage) {
+        const enhancedImageUrl = `data:${enhancedImage.mimeType};base64,${enhancedImage.data}`;
+        
+        const fetchRes = await fetch(enhancedImageUrl);
+        const blob = await fetchRes.blob();
+        const enhancedFile = new File([blob], initialFile.name, { type: enhancedImage.mimeType });
+        
+        setUploadedFile(enhancedFile);
+        setOriginalImage(enhancedImageUrl);
+        setIsEnhanced(true);
+      } else {
+        setError("The AI couldn't enhance this image. Please try a different photo.");
+      }
+    } catch (e) {
+      console.error("AI Enhancement Error:", e);
+      setError("An error occurred while enhancing the image. Please try again.");
+    } finally {
+      setIsEnhancing(false);
+    }
+  }, [initialFile]);
+
+  // Reverts the image back to the original upload
+  const handleRevertToOriginal = useCallback(() => {
+    if (initialFile && initialImageUrl) {
+      setUploadedFile(initialFile);
+      setOriginalImage(initialImageUrl);
+      setIsEnhanced(false);
+    }
+  }, [initialFile, initialImageUrl]);
+
 
   // Generates the new look using the Gemini API
   const handleGenerateLook = useCallback(async () => {
@@ -377,6 +450,38 @@ export default function App() {
                   Choose Photo
                   <input type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
                 </label>
+                {originalImage && (
+                  <div className="mt-4 w-full max-w-xs text-center">
+                    <h2 className="text-lg font-semibold mb-2 text-slate-300">Want a better shot?</h2>
+                    {!isEnhanced ? (
+                      <button 
+                        onClick={handleEnhanceImage}
+                        disabled={isEnhancing}
+                        className="w-full bg-amber-500 text-slate-900 font-bold py-2 px-4 rounded-lg hover:bg-amber-400 transition-all duration-300 disabled:bg-slate-600 disabled:opacity-50 flex items-center justify-center gap-2"
+                      >
+                        {isEnhancing ? (
+                          <>
+                            <div className="w-5 h-5 border-2 border-dashed rounded-full animate-spin border-slate-900"></div>
+                            Enhancing...
+                          </>
+                        ) : (
+                          "✨ Studio Enhance"
+                        )}
+                      </button>
+                    ) : (
+                      <div className="flex gap-2">
+                        <p className="flex-grow text-left py-2 px-3 bg-green-900/50 text-green-300 rounded-lg text-sm">✓ Enhanced!</p>
+                        <button 
+                          onClick={handleRevertToOriginal}
+                          className="bg-slate-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-slate-500 transition-colors duration-300 text-sm"
+                        >
+                          Revert
+                        </button>
+                      </div>
+                    )}
+                    <p className="text-slate-400 text-xs mt-2">Let AI give your photo a professional studio look.</p>
+                  </div>
+                )}
               </div>
 
               <div className="w-full lg:w-1/2 flex flex-col items-center lg:items-start">
