@@ -161,6 +161,142 @@ const ImageSlider: React.FC<ImageSliderProps> = ({ beforeImage, afterImage, adju
   );
 };
 
+interface ShareModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  beforeImage: string;
+  afterImage: string;
+  adjustments: Adjustments;
+}
+
+const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, beforeImage, afterImage, adjustments }) => {
+  const [compositeImage, setCompositeImage] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const generateCompositeImage = useCallback(async () => {
+    setIsGenerating(true);
+    try {
+      const before = new Image();
+      const after = new Image();
+      before.crossOrigin = "anonymous";
+      after.crossOrigin = "anonymous";
+
+      await Promise.all([
+        new Promise(resolve => { before.onload = resolve; before.src = beforeImage; }),
+        new Promise(resolve => { after.onload = resolve; after.src = afterImage; }),
+      ]);
+      
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      const dpr = window.devicePixelRatio || 1;
+      const imgWidth = before.width;
+      const imgHeight = before.height;
+      
+      canvas.width = imgWidth * 2 * dpr;
+      canvas.height = imgHeight * dpr;
+      ctx.scale(dpr, dpr);
+
+      // Draw before image
+      ctx.drawImage(before, 0, 0, imgWidth, imgHeight);
+
+      // Draw after image with adjustments
+      ctx.save();
+      const { brightness, contrast, temperature } = adjustments;
+      ctx.filter = `brightness(${brightness / 100}) contrast(${contrast / 100})`;
+      ctx.drawImage(after, imgWidth, 0, imgWidth, imgHeight);
+
+      // Apply temperature overlay
+      const maxOpacity = 0.3;
+      if (temperature > 0) {
+        ctx.fillStyle = `rgba(255, 165, 0, ${(temperature / 50) * maxOpacity})`;
+        ctx.fillRect(imgWidth, 0, imgWidth, imgHeight);
+      } else if (temperature < 0) {
+        ctx.fillStyle = `rgba(0, 120, 255, ${(Math.abs(temperature) / 50) * maxOpacity})`;
+        ctx.fillRect(imgWidth, 0, imgWidth, imgHeight);
+      }
+      ctx.restore();
+      
+      // Add labels and divider
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(imgWidth - 1, 0, 2, imgHeight); // Divider
+      ctx.font = 'bold 32px sans-serif';
+      ctx.textAlign = 'center';
+
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+      ctx.fillRect(10, imgHeight - 60, 140, 45);
+      ctx.fillRect(imgWidth + 10, imgHeight - 60, 120, 45);
+
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillText('Before', 80, imgHeight - 25);
+      ctx.fillText('After', imgWidth + 70, imgHeight - 25);
+
+      setCompositeImage(canvas.toDataURL('image/jpeg', 0.9));
+    } catch (error) {
+      console.error("Error generating composite image:", error);
+    } finally {
+      setIsGenerating(false);
+    }
+  }, [beforeImage, afterImage, adjustments]);
+
+  useEffect(() => {
+    if (isOpen) {
+      generateCompositeImage();
+    } else {
+      setCompositeImage(null);
+    }
+  }, [isOpen, generateCompositeImage]);
+
+  if (!isOpen) return null;
+  
+  const handleDownload = () => {
+    if (!compositeImage) return;
+    const link = document.createElement('a');
+    link.href = compositeImage;
+    link.download = 'glamai-look.jpg';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+  
+  const shareText = "Check out my new look from Glamai Look Lab! #AIHairstyle #Glamai";
+  const encodedShareText = encodeURIComponent(shareText);
+
+  return (
+    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div className="bg-slate-800 rounded-2xl shadow-2xl p-6 sm:p-8 w-full max-w-lg relative" onClick={e => e.stopPropagation()}>
+        <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors">&times;</button>
+        <h2 className="text-2xl font-bold mb-4 text-center">Share Your Look</h2>
+        <div className="aspect-video bg-slate-700/50 rounded-lg flex items-center justify-center mb-6">
+          {isGenerating && <div className="w-8 h-8 border-2 border-dashed rounded-full animate-spin border-indigo-400"></div>}
+          {compositeImage && <img src={compositeImage} alt="Before and After" className="max-w-full max-h-full object-contain rounded-lg" />}
+        </div>
+        <div className="flex flex-col gap-4">
+          <button onClick={handleDownload} disabled={!compositeImage} className="w-full bg-green-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-700 transition-all disabled:bg-slate-600">
+            Download Image
+          </button>
+          <p className="text-slate-400 text-sm text-center">Download the image first, then share it on your favorite platform!</p>
+          <div className="flex justify-center items-center gap-4">
+             <a href={`https://twitter.com/intent/tweet?text=${encodedShareText}`} target="_blank" rel="noopener noreferrer" aria-label="Share on X" className="text-slate-400 hover:text-white transition-colors">
+              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 16 16"><path d="M12.6.75h2.454l-5.36 6.142L16 15.25h-4.937l-3.867-5.07-4.425 5.07H.316l5.733-6.57L0 .75h5.063l3.495 4.633L12.601.75Zm-1.78 13.05h1.68L3.26 2.05H1.68l9.14 11.7z"/></svg>
+            </a>
+            <a href="https://www.facebook.com/" target="_blank" rel="noopener noreferrer" aria-label="Share on Facebook" className="text-slate-400 hover:text-white transition-colors">
+              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 16 16"><path d="M16 8.049c0-4.446-3.582-8.05-8-8.05C3.58 0-.002 3.603-.002 8.05c0 4.017 2.926 7.347 6.75 7.951v-5.625h-2.03V8.05H6.75V6.275c0-2.017 1.195-3.131 3.022-3.131.876 0 1.791.157 1.791.157v1.98h-1.009c-.993 0-1.303.621-1.303 1.258v1.51h2.218l-.354 2.326H9.25V16c3.824-.604 6.75-3.934 6.75-7.951z"/></svg>
+            </a>
+             <a href="https://pinterest.com/" target="_blank" rel="noopener noreferrer" aria-label="Share on Pinterest" className="text-slate-400 hover:text-white transition-colors">
+              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 16 16"><path d="M8 0a8 8 0 0 0-2.915 15.452c-.07-.633-.134-1.606.027-2.297.146-.625.938-3.977.938-3.977s-.239-.479-.239-1.187c0-1.113.645-1.943 1.448-1.943.682 0 1.012.512 1.012 1.127 0 .686-.437 1.712-.663 2.663-.188.796.4 1.446 1.185 1.446 1.422 0 2.515-1.5 2.515-3.664 0-1.915-1.377-3.254-3.342-3.254-2.276 0-3.612 1.707-3.612 3.471 0 .688.265 1.425.595 1.826a.24.24 0 0 1 .056.23c-.061.252-.196.796-.222.907-.035.146-.116.177-.268.107-1-.465-1.624-1.926-1.624-3.1 0-2.523 1.834-4.84 5.286-4.84 2.775 0 4.932 1.977 4.932 4.62 0 2.757-1.739 4.976-4.151 4.976-.811 0-1.573-.421-1.834-.919l-.498 1.902c-.181.695-.669 1.566-.995 2.097A8 8 0 1 0 8 0z"/></svg>
+            </a>
+             <a href={`https://www.reddit.com/submit?title=${encodedShareText}`} target="_blank" rel="noopener noreferrer" aria-label="Share on Reddit" className="text-slate-400 hover:text-white transition-colors">
+              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 16 16"><path d="M6.705 11.545c.325.325.855.325 1.18 0l1.9-1.9c.325-.325.325-.855 0-1.18s-.855-.325-1.18 0l-1.9 1.9c-.325.325-.325.855 0 1.18z"/><path d="M11.236 7.64a.848.848 0 0 0-1.196-.01.848.848 0 0 0-.01 1.196l1.35 1.35c.33.33.86.33 1.19 0s.33-.86 0-1.19l-1.344-1.346zm-5.59-1.206c.33-.33.86-.33 1.19 0s.33.86 0 1.19L5.49 10.01c-.33.33-.86.33-1.19 0a.848.848 0 0 1 0-1.19l1.342-1.344z"/><path d="M8 0a8 8 0 1 0 0 16A8 8 0 0 0 8 0zm4.243 12.243a.848.848 0 0 1-1.196 0l-1.345-1.345a.848.848 0 0 1 0-1.196.848.848 0 0 1 1.196 0l1.345 1.345a.848.848 0 0 1 0 1.196zm-4.137 1.393a.848.848 0 0 1-1.196-.01.848.848 0 0 1-.01-1.196l1.345-1.345a.848.848 0 0 1 1.196 0 .848.848 0 0 1 0 1.196l-1.345 1.345zM8 5.795c-1.258 0-2.28 1.022-2.28 2.28s1.022 2.28 2.28 2.28 2.28-1.022 2.28-2.28S9.258 5.795 8 5.795z"/></svg>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 
 // --- Main App Component ---
 export default function App() {
@@ -172,6 +308,7 @@ export default function App() {
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   
   // Image enhancement state
   const [isEnhancing, setIsEnhancing] = useState<boolean>(false);
@@ -421,6 +558,23 @@ export default function App() {
   };
 
   const isGenerateButtonDisabled = !originalImage || !selectedStyle || isLoading;
+  
+  const Footer: React.FC = () => (
+    <footer className="w-full max-w-4xl mx-auto mt-8 py-6 border-t border-slate-700 text-center">
+      <div className="flex justify-center items-center gap-6 mb-4">
+         <a href="#" aria-label="Our X account" className="text-slate-400 hover:text-white transition-colors">
+          <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 16 16"><path d="M12.6.75h2.454l-5.36 6.142L16 15.25h-4.937l-3.867-5.07-4.425 5.07H.316l5.733-6.57L0 .75h5.063l3.495 4.633L12.601.75Zm-1.78 13.05h1.68L3.26 2.05H1.68l9.14 11.7z"/></svg>
+        </a>
+         <a href="#" aria-label="Our Facebook page" className="text-slate-400 hover:text-white transition-colors">
+          <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 16 16"><path d="M16 8.049c0-4.446-3.582-8.05-8-8.05C3.58 0-.002 3.603-.002 8.05c0 4.017 2.926 7.347 6.75 7.951v-5.625h-2.03V8.05H6.75V6.275c0-2.017 1.195-3.131 3.022-3.131.876 0 1.791.157 1.791.157v1.98h-1.009c-.993 0-1.303.621-1.303 1.258v1.51h2.218l-.354 2.326H9.25V16c3.824-.604 6.75-3.934 6.75-7.951z"/></svg>
+        </a>
+         <a href="#" aria-label="Our Instagram profile" className="text-slate-400 hover:text-white transition-colors">
+           <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 16 16"><path d="M8 0C5.829 0 5.556.01 4.703.048 3.85.088 3.269.222 2.76.42a3.917 3.917 0 0 0-1.417.923A3.927 3.927 0 0 0 .42 2.76C.222 3.268.087 3.85.048 4.7.01 5.555 0 5.827 0 8.001c0 2.172.01 2.444.048 3.297.04.852.174 1.433.372 1.942.205.526.478.972.923 1.417.444.445.89.719 1.416.923.51.198 1.09.333 1.942.372C5.555 15.99 5.827 16 8 16s2.444-.01 3.298-.048c.851-.04 1.434-.174 1.943-.372a3.916 3.916 0 0 0 1.416-.923c.445-.445.718-.891.923-1.417.197-.509.332-1.09.372-1.942C15.99 10.445 16 10.173 16 8s-.01-2.445-.048-3.299c-.04-.851-.175-1.433-.372-1.941a3.926 3.926 0 0 0-.923-1.417A3.911 3.911 0 0 0 13.24.42c-.51-.198-1.092-.333-1.943-.372C10.443.01 10.172 0 7.998 0h.003zm-.717 1.442h.718c2.136 0 2.389.007 3.232.046.78.035 1.204.166 1.486.275.373.145.64.319.92.599.28.28.453.546.598.92.11.282.24.705.275 1.485.039.843.047 1.096.047 3.231s-.008 2.389-.047 3.232c-.035.78-.166 1.203-.275 1.485a2.47 2.47 0 0 1-.599.919c-.28.28-.546.453-.92.598-.28.282-.705.416-1.485.276-.843.038-1.096.047-3.232.047s-2.39-.009-3.233-.047c-.78-.036-1.203-.166-1.485-.276a2.478 2.478 0 0 1-.92-.598 2.48 2.48 0 0 1-.6-.92c-.109-.282-.24-.705-.275-1.485-.038-.843-.046-1.096-.046-3.232s.008-2.389.046-3.232c.036-.78.166-1.204.276-1.486.145-.373.319-.64.599-.92.28-.28.546-.453.92-.598.282-.11.705-.24 1.485-.276.843-.038 1.096-.047 3.232-.047zM8 4.908a3.092 3.092 0 1 0 0 6.184 3.092 3.092 0 0 0 0-6.184zm0 5.068a1.977 1.977 0 1 1 0-3.955 1.977 1.977 0 0 1 0 3.955zm3.592-5.926a.744.744 0 1 0 0-1.488.744.744 0 0 0 0 1.488z"/></svg>
+        </a>
+      </div>
+      <p className="text-slate-500 text-sm">&copy; {new Date().getFullYear()} Glamai Look Lab. All rights reserved.</p>
+    </footer>
+  );
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-6 lg:p-8 text-white font-sans">
@@ -550,7 +704,7 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-4 mt-4">
+              <div className="flex flex-wrap justify-center items-center gap-4 mt-4">
                 <button
                   onClick={handleTryAnotherStyle}
                   className="bg-indigo-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-indigo-700 transition-all duration-300 shadow-md"
@@ -563,6 +717,13 @@ export default function App() {
                   className="bg-purple-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-purple-700 transition-all duration-300 shadow-md disabled:bg-slate-600 disabled:opacity-70"
                 >
                   {isCurrentLookSaved ? 'Saved!' : 'Save Look'}
+                </button>
+                <button
+                  onClick={() => setIsShareModalOpen(true)}
+                  className="bg-sky-500 text-white font-semibold py-2 px-6 rounded-lg hover:bg-sky-600 transition-all duration-300 shadow-md flex items-center gap-2"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" /></svg>
+                  Share Look
                 </button>
               </div>
             </div>
@@ -614,6 +775,16 @@ export default function App() {
         )}
 
       </div>
+        {generatedImage && originalImage && (
+            <ShareModal
+            isOpen={isShareModalOpen}
+            onClose={() => setIsShareModalOpen(false)}
+            beforeImage={originalImage}
+            afterImage={generatedImage}
+            adjustments={adjustments}
+            />
+        )}
+      <Footer />
     </div>
   );
 }
