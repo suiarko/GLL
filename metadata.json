@@ -1,0 +1,5 @@
+{
+  "name": "Glamai Look Lab",
+  "description": "An AI-powered application that allows users to upload a photo and visualize different hairstyles on it. Select a style, generate a new look, and see a before-and-after comparison.",
+  "requestFramePermissions": []
+}
