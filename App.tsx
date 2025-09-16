@@ -43,6 +43,8 @@ interface SavedLook {
   id: number;
   before: string;
   after: string;
+  style: string;
+  color: string | null;
 }
 
 // --- AI Initialization ---
@@ -291,6 +293,7 @@ export default function App() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [recoloringColor, setRecoloringColor] = useState<string | null>(null);
   
   // Image enhancement state
   const [isEnhancing, setIsEnhancing] = useState<boolean>(false);
@@ -303,12 +306,23 @@ export default function App() {
   const [isCurrentLookSaved, setIsCurrentLookSaved] = useState(false);
   const [activeLookId, setActiveLookId] = useState<number | null>(null);
 
+  // Result view state
+  const [resultDisplayMode, setResultDisplayMode] = useState<'slider' | 'toggle'>('slider');
+  const [toggleShowGenerated, setToggleShowGenerated] = useState(true);
+
   // Load saved looks from localStorage on initial render
   useEffect(() => {
     try {
       const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
       if (saved) {
-        setSavedLooks(JSON.parse(saved));
+        const parsedLooks = JSON.parse(saved);
+        // Data migration for old saved looks that don't have style/color
+        const migratedLooks = parsedLooks.map((look: any) => ({
+          ...look,
+          style: look.style || 'Unknown Style', // Provide a default
+          color: look.color || null,
+        }));
+        setSavedLooks(migratedLooks);
       }
     } catch (e) {
       console.error("Failed to load saved looks:", e);
@@ -380,7 +394,7 @@ export default function App() {
 
     try {
       const imagePart = await fileToGenerativePart(initialFile);
-      const textPart = { text: "Transform this photo into a high-quality studio portrait. Apply professional studio lighting to add depth and dimension to the subject's face. Replace the existing background with a clean, neutral studio backdrop (e.g., soft grey or off-white). Perform subtle, natural skin smoothing to reduce minor blemishes and imperfections, making the skin appear more matte by removing oil and shine, while preserving the original skin texture. Increase the overall image sharpness and clarity. It is absolutely crucial that the person's facial features, facial structure, head shape, and expression remain completely unchanged. Do not stretch, compress, or otherwise alter the dimensions of the face." };
+      const textPart = { text: "Transform this photo into a high-quality studio portrait. Apply professional studio lighting to add depth and dimension to the subject's face. Replace the existing background with a clean, neutral studio backdrop (e.g., soft grey or off-white). Perform natural skin smoothing to reduce minor blemishes, imperfections, and acne. Make the skin appear more matte and smooth by removing excess oil and shine, while preserving the original skin texture. Increase the overall image sharpness and clarity. It is absolutely crucial that the person's facial features, facial structure, head shape, and expression remain completely unchanged. Do not stretch, compress, or otherwise alter the dimensions of the face." };
 
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image-preview',
@@ -488,6 +502,58 @@ export default function App() {
     }
   }, [uploadedFile, selectedStyle, selectedColor, selectedGender]);
 
+  const handleChangeColor = useCallback(async (newColor: string | null) => {
+    if (!generatedImage || !selectedStyle) return;
+
+    setRecoloringColor(newColor);
+    setError(null);
+
+    try {
+      // Convert the current generated image (base64) back to a File object for the API
+      const fetchRes = await fetch(generatedImage);
+      const blob = await fetchRes.blob();
+      const currentImageFile = new File([blob], "current_look.png", { type: blob.type });
+      const imagePart = await fileToGenerativePart(currentImageFile);
+
+      const prompt = newColor
+        ? `Change the hair color in the image to ${newColor}. Keep the existing hairstyle (${selectedStyle}). It is absolutely crucial that only the hair color is changed. Do not alter the hairstyle, facial features, head shape, or background.`
+        : `Remove the artificial hair color and restore the hair to a natural, original-looking color that matches the person's features. Keep the existing hairstyle (${selectedStyle}). It is absolutely crucial that only the hair color is changed. Do not alter the hairstyle, facial features, head shape, or background.`;
+      
+      const textPart = { text: prompt };
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash-image-preview',
+        contents: { parts: [imagePart, textPart] },
+        config: { responseModalities: [Modality.IMAGE, Modality.TEXT] },
+      });
+
+      let newImage: string | null = null;
+      if (response.candidates && response.candidates.length > 0) {
+        for (const part of response.candidates[0].content.parts) {
+          if (part.inlineData) {
+            newImage = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+            break;
+          }
+        }
+      }
+
+      if (newImage) {
+        setGeneratedImage(newImage);
+        setSelectedColor(newColor);
+        setIsCurrentLookSaved(false); // The look has changed, so it can be saved again
+        setActiveLookId(null);
+      } else {
+        setError("The AI couldn't change the color. Please try a different color or style.");
+      }
+    } catch (e) {
+      console.error("AI Recolor Error:", e);
+      setError("An error occurred while changing the color. Please try again.");
+    } finally {
+      setRecoloringColor(null);
+    }
+  }, [generatedImage, selectedStyle]);
+
+
   // Resets the state to allow the user to try another style with the same photo
   const handleTryAnotherStyle = useCallback(() => {
     setGeneratedImage(null);
@@ -498,23 +564,27 @@ export default function App() {
     setError(null);
     setIsCurrentLookSaved(false);
     setActiveLookId(null);
+    setResultDisplayMode('slider');
+    setToggleShowGenerated(true);
   }, []);
   
   // Saves the current look to localStorage
   const handleSaveLook = useCallback(() => {
-    if (!originalImage || !generatedImage || isCurrentLookSaved) return;
+    if (!originalImage || !generatedImage || isCurrentLookSaved || !selectedStyle) return;
 
     const newLook: SavedLook = {
       id: Date.now(),
       before: originalImage,
       after: generatedImage,
+      style: selectedStyle,
+      color: selectedColor,
     };
 
     const updatedLooks = [...savedLooks, newLook];
     setSavedLooks(updatedLooks);
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedLooks));
     setIsCurrentLookSaved(true);
-  }, [originalImage, generatedImage, savedLooks, isCurrentLookSaved]);
+  }, [originalImage, generatedImage, savedLooks, isCurrentLookSaved, selectedStyle, selectedColor]);
 
   // Deletes a saved look
   const handleDeleteLook = useCallback((id: number) => {
@@ -528,9 +598,14 @@ export default function App() {
     if (window.confirm("Are you sure you want to delete all your saved looks? This action cannot be undone.")) {
       setSavedLooks([]);
       localStorage.removeItem(LOCAL_STORAGE_KEY);
-      // If a result is being shown, reset the view to the selection screen
+      
+      // If a result is currently being displayed, reset the view to the style selection screen.
       if (generatedImage) {
+        // handleTryAnotherStyle resets all the necessary states for the results view.
         handleTryAnotherStyle();
+      } else {
+        // If not in results view, ensure no look remains highlighted after deletion.
+        setActiveLookId(null);
       }
     }
   }, [generatedImage, handleTryAnotherStyle]);
@@ -550,11 +625,13 @@ export default function App() {
       const file = new File([blob], `saved_look_${look.id}.png`, { type: blob.type });
       setUploadedFile(file);
       
-      // Reset styling state and scroll to the top to show the result
+      // Restore style and color to display the name
+      setSelectedStyle(look.style);
+      setSelectedColor(look.color || null);
+      
+      // Reset other states and scroll to the top to show the result
       setActiveLookId(look.id);
-      setSelectedStyle(null);
       setPreviousSelectedStyle(null);
-      setSelectedColor(null);
       setActiveCategory('All');
       setError(null);
       setIsCurrentLookSaved(true);
@@ -566,6 +643,8 @@ export default function App() {
       // Still display the look even if file conversion fails
       setOriginalImage(look.before);
       setGeneratedImage(look.after);
+      setSelectedStyle(look.style);
+      setSelectedColor(look.color || null);
       setActiveLookId(look.id);
       setIsCurrentLookSaved(true);
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -597,6 +676,11 @@ export default function App() {
         </a>
          <a href="#" aria-label="Our Instagram profile" className="text-slate-400 hover:text-white transition-colors">
            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 16 16"><path d="M8 0C5.829 0 5.556.01 4.703.048 3.85.088 3.269.222 2.76.42a3.917 3.917 0 0 0-1.417.923A3.927 3.927 0 0 0 .42 2.76C.222 3.268.087 3.85.048 4.7.01 5.555 0 5.827 0 8.001c0 2.172.01 2.444.048 3.297.04.852.174 1.433.372 1.942.205.526.478.972.923 1.417.444.445.89.719 1.416.923.51.198 1.09.333 1.942.372C5.555 15.99 5.827 16 8 16s2.444-.01 3.298-.048c.851-.04 1.434-.174 1.943-.372a3.916 3.916 0 0 0 1.416-.923c.445-.445.718-.891.923-1.417.197-.509.332-1.09.372-1.942C15.99 10.445 16 10.173 16 8s-.01-2.445-.048-3.299c-.04-.851-.175-1.433-.372-1.941a3.926 3.926 0 0 0-.923-1.417A3.911 3.911 0 0 0 13.24.42c-.51-.198-1.092-.333-1.943-.372C10.443.01 10.172 0 7.998 0h.003zm-.717 1.442h.718c2.136 0 2.389.007 3.232.046.78.035 1.204.166 1.486.275.373.145.64.319.92.599.28.28.453.546.598.92.11.282.24.705.275 1.485.039.843.047 1.096.047 3.231s-.008 2.389-.047 3.232c-.035.78-.166 1.203-.275 1.485a2.47 2.47 0 0 1-.599.919c-.28.28-.546.453-.92.598-.28.282-.705.416-1.485.276-.843.038-1.096.047-3.232.047s-2.39-.009-3.233-.047c-.78-.036-1.203-.166-1.485-.276a2.478 2.478 0 0 1-.92-.598 2.48 2.48 0 0 1-.6-.92c-.109-.282-.24-.705-.275-1.485-.038-.843-.046-1.096-.046-3.232s.008-2.389.046-3.232c.036-.78.166-1.204.276-1.486.145-.373.319-.64.599-.92.28-.28.546-.453.92-.598.282-.11.705-.24 1.485-.276.843-.038 1.096-.047 3.232-.047zM8 4.908a3.092 3.092 0 1 0 0 6.184 3.092 3.092 0 0 0 0-6.184zm0 5.068a1.977 1.977 0 1 1 0-3.955 1.977 1.977 0 0 1 0 3.955zm3.592-5.926a.744.744 0 1 0 0-1.488.744.744 0 0 0 0 1.488z"/></svg>
+        </a>
+        <a href="#" aria-label="Our Reddit community" className="text-slate-400 hover:text-white transition-colors">
+          <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M24 11.779c0-1.459-1.192-2.645-2.657-2.645-.715 0-1.363.286-1.84.746-1.81-1.191-4.259-1.982-6.972-2.066l1.483-4.669 4.353.98a2.658 2.658 0 0 0 2.626-3.273 2.658 2.658 0 0 0-3.273-2.626l-5.104-1.15a1.327 1.327 0 0 0-1.256.299l-1.559.985-.701-2.221c-.23-.728-1.015-1.123-1.742-.893s-1.123 1.015-.893 1.742l.846 2.678-5.021.905c-.728.13-1.249.789-1.249 1.523v.003c0 .591.332 1.113.829 1.385l-1.155 3.655c-2.923.385-5.526 1.349-7.256 2.936C.421 9.956 0 10.59 0 11.231c0 2.51 4.103 4.545 9.172 4.545s9.172-2.035 9.172-4.545c0-.441-.144-.863-.404-1.241.036-.289.055-.581.055-.877zm-14.828-3.145c.813 0 1.472.657 1.472 1.47s-.659 1.47-1.472 1.47c-.813 0-1.472-.657-1.472-1.47s.659-1.47 1.472-1.47zm7.329 2.94c0 .812-.66 1.47-1.473 1.47-.813 0-1.472-.657-1.472-1.47s.659-1.47 1.472-1.47c.813 0 1.473.657 1.473 1.47zm-1.84 4.016c-1.363 1.36-3.583 1.36-4.946 0l-.547-.546c-.184-.184-.184-.482 0-.665.184-.184.481-.184.665 0l.547.546c.985.984 2.583.984 3.568 0l.547-.546c.184-.184.481-.184.665 0 .184.184.184.482 0 .665l-.546.546z"/>
+          </svg>
         </a>
       </div>
       <p className="text-slate-500 text-sm">&copy; {new Date().getFullYear()} Glamai Look Lab. All rights reserved.</p>
@@ -648,9 +732,11 @@ export default function App() {
               <div className={`flex flex-col lg:flex-row items-start justify-center gap-8 transition-opacity duration-500 ${!selectedGender ? 'opacity-50 cursor-not-allowed pointer-events-none' : 'opacity-100'}`}>
                 <div className="flex-shrink-0 flex flex-col items-center space-y-4">
                   <h2 className="text-2xl font-semibold mb-0 text-slate-200">2. Upload Photo</h2>
-                  <div className="w-64 h-64 md:w-80 md:h-80 bg-slate-700/50 rounded-lg flex items-center justify-center border-2 border-dashed border-slate-600">
-                    {originalImage ? (
-                      <img src={originalImage} alt="Original upload" className="w-full h-full object-cover rounded-lg" />
+                  <div className="w-64 h-64 md:w-80 md:h-80 bg-slate-700/50 rounded-lg flex items-center justify-center border-2 border-dashed border-slate-600 overflow-hidden">
+                    {isEnhanced && initialImageUrl && originalImage ? (
+                        <ImageSlider beforeImage={initialImageUrl} afterImage={originalImage} />
+                    ) : originalImage ? (
+                      <img src={originalImage} alt="Original upload" className="w-full h-full object-cover" />
                     ) : (
                       <span className="text-slate-400">Your Photo Here</span>
                     )}
@@ -807,14 +893,90 @@ export default function App() {
           ) : (
             // --- RESULTS SECTION ---
             <div className="flex flex-col items-center">
-              <h2 className="text-3xl font-bold mb-6 text-center">Your New Look!</h2>
+              <h2 className="text-3xl font-bold mb-2 text-center">Your New Look!</h2>
+              {selectedStyle && (
+                <p className="text-lg text-slate-300 mb-4 text-center">
+                  Style: <span className="font-semibold">{selectedStyle}</span>
+                  {selectedColor && ` (Color: ${selectedColor})`}
+                </p>
+              )}
+              <div className="flex justify-center items-center p-1 rounded-lg bg-slate-700/50 mb-4 w-min mx-auto">
+                <button onClick={() => setResultDisplayMode('slider')} className={`px-4 py-1 rounded-md text-sm font-semibold transition-colors ${resultDisplayMode === 'slider' ? 'bg-slate-200 text-slate-900' : 'text-slate-300 hover:bg-slate-600'}`}>Slider</button>
+                <button onClick={() => setResultDisplayMode('toggle')} className={`px-4 py-1 rounded-md text-sm font-semibold transition-colors ${resultDisplayMode === 'toggle' ? 'bg-slate-200 text-slate-900' : 'text-slate-300 hover:bg-slate-600'}`}>Toggle</button>
+              </div>
+
               <div className="w-full flex justify-center mb-6">
-                {originalImage && (
+                {originalImage && resultDisplayMode === 'slider' && (
                   <ImageSlider beforeImage={originalImage} afterImage={generatedImage} />
                 )}
+                {originalImage && resultDisplayMode === 'toggle' && (
+                  <div className="w-full max-w-lg">
+                      <div className="relative w-full aspect-square rounded-lg overflow-hidden border-2 border-slate-600">
+                          <img
+                              src={toggleShowGenerated ? generatedImage : originalImage}
+                              alt={toggleShowGenerated ? 'Generated' : 'Original'}
+                              className="w-full h-full object-cover"
+                          />
+                      </div>
+                      <div className="flex items-center justify-center gap-3 mt-4">
+                          <span className={`font-medium transition-colors ${!toggleShowGenerated ? 'text-white' : 'text-slate-400'}`}>Original</span>
+                          <button
+                              onClick={() => setToggleShowGenerated(!toggleShowGenerated)}
+                              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${toggleShowGenerated ? 'bg-indigo-600' : 'bg-slate-600'}`}
+                              aria-label="Toggle between original and generated image"
+                          >
+                              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${toggleShowGenerated ? 'translate-x-6' : 'translate-x-1'}`} />
+                          </button>
+                          <span className={`font-medium transition-colors ${toggleShowGenerated ? 'text-white' : 'text-slate-400'}`}>Generated</span>
+                      </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="w-full max-w-lg mt-6 p-4 bg-slate-700/50 rounded-lg">
+                <h3 className="text-xl font-semibold mb-4 text-center text-slate-200">Change Color</h3>
+                 <div className="flex justify-center flex-wrap gap-4">
+                    <button
+                        key="recolor-no-color"
+                        onClick={() => handleChangeColor(null)}
+                        disabled={!!recoloringColor}
+                        aria-label="Revert to original hair color"
+                        title="Revert to Original Color"
+                        className={`w-16 h-16 rounded-full border-2 transition-all duration-200 flex items-center justify-center bg-slate-700/50 relative
+                            ${!selectedColor && !recoloringColor ? 'border-sky-400 ring-4 ring-sky-400/30' : 'border-slate-500'}
+                            ${recoloringColor ? 'opacity-50 cursor-not-allowed' : 'hover:border-sky-400'}`}
+                    >
+                        {recoloringColor === null && (
+                           <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
+                                <div className="w-6 h-6 border-2 border-dashed rounded-full animate-spin border-white"></div>
+                           </div>
+                        )}
+                        <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path>
+                        </svg>
+                    </button>
+                    {HAIR_COLORS.map((color) => (
+                      <button
+                        key={`recolor-${color.name}`}
+                        onClick={() => handleChangeColor(color.name)}
+                        disabled={!!recoloringColor}
+                        aria-label={`Select ${color.name} hair color`}
+                        className={`w-16 h-16 rounded-full border-2 transition-all duration-200 relative
+                          ${selectedColor === color.name && !recoloringColor ? 'border-sky-400 ring-4 ring-sky-400/30' : 'border-slate-500'}
+                          ${recoloringColor ? 'opacity-50 cursor-not-allowed' : 'hover:border-sky-400'}`}
+                        style={color.style}
+                      >
+                        {recoloringColor === color.name && (
+                           <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
+                                <div className="w-6 h-6 border-2 border-dashed rounded-full animate-spin border-white"></div>
+                           </div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
               </div>
               
-              <div className="flex flex-wrap justify-center items-center gap-4 mt-4">
+              <div className="flex flex-wrap justify-center items-center gap-4 mt-8">
                 <button
                   onClick={handleTryAnotherStyle}
                   className="bg-indigo-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-indigo-700 transition-all duration-300 shadow-md"
@@ -836,6 +998,9 @@ export default function App() {
                   Share Look
                 </button>
               </div>
+               {error && (
+                <p className="text-red-400 mt-4 text-center w-full max-w-sm">{error}</p>
+              )}
             </div>
           )}
         </main>
@@ -867,6 +1032,10 @@ export default function App() {
                        <h3 className="text-lg font-semibold text-slate-300 mb-2 text-center">After</h3>
                        <img src={look.after} alt="Saved after" className="w-full h-auto object-cover rounded" />
                     </div>
+                  </div>
+                  <div className="mt-3 text-center">
+                    <h4 className="font-bold text-slate-200 truncate" title={look.style}>{look.style}</h4>
+                    {look.color && <p className="text-sm text-slate-400">{look.color}</p>}
                   </div>
                    <button 
                     onClick={(e) => {
