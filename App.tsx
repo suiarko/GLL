@@ -37,6 +37,8 @@ const HAIR_COLORS = [
 const LOCAL_STORAGE_KEY = 'glamai-saved-looks';
 const MAX_FILE_SIZE_MB = 5;
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+const COPY_STYLE_KEY = 'copy-style-from-image';
+
 
 // --- Types ---
 interface SavedLook {
@@ -111,7 +113,7 @@ const ImageSlider: React.FC<ImageSliderProps> = ({ beforeImage, afterImage }) =>
       window.removeEventListener('mouseup', handleMouseUp);
       window.removeEventListener('touchend', handleTouchEnd);
     };
-  }, [isDragging]);
+  }, [isDragging, handleMove]);
 
   const handleMouseDown = () => setIsDragging(true);
   const handleTouchStart = () => setIsDragging(true);
@@ -280,6 +282,8 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, beforeImage, a
 
 // --- Main App Component ---
 export default function App() {
+  const referenceImageInputRef = useRef<HTMLInputElement>(null);
+
   // --- State Management ---
   // Core functionality state
   const [selectedGender, setSelectedGender] = useState<'woman' | 'man' | null>(null);
@@ -294,6 +298,8 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [recoloringColor, setRecoloringColor] = useState<string | null>(null);
+  const [referenceImageFile, setReferenceImageFile] = useState<File | null>(null);
+  const [referenceImageUrl, setReferenceImageUrl] = useState<string | null>(null);
   
   // Image enhancement state
   const [isEnhancing, setIsEnhancing] = useState<boolean>(false);
@@ -334,6 +340,8 @@ export default function App() {
     setSelectedStyle(null);
     setPreviousSelectedStyle(null);
     setActiveCategory('All');
+    setReferenceImageFile(null);
+    setReferenceImageUrl(null);
   }, [selectedGender]);
 
   // Handles the file input change event
@@ -366,9 +374,36 @@ export default function App() {
       setActiveLookId(null);
     }
   }, []);
+  
+  // Handles the reference image input change event
+  const handleReferenceImageChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files[0]) {
+        const file = event.target.files[0];
+
+        if (!file.type.startsWith('image/')) {
+            setError('Invalid reference file type. Please upload an image.');
+            return;
+        }
+        if (file.size > MAX_FILE_SIZE_BYTES) {
+            setError(`Reference image is too large. Max size is ${MAX_FILE_SIZE_MB}MB.`);
+            return;
+        }
+
+        setReferenceImageFile(file);
+        setReferenceImageUrl(URL.createObjectURL(file));
+        setSelectedStyle(COPY_STYLE_KEY);
+        setError(null);
+    }
+  }, []);
+
+  const handleCopyStyleClick = () => {
+      referenceImageInputRef.current?.click();
+  };
 
   // Handles the selection of a hairstyle and saves the previous state for undo
   const handleStyleSelect = useCallback((style: string) => {
+    setReferenceImageFile(null);
+    setReferenceImageUrl(null);
     setSelectedStyle(currentStyle => {
       if (currentStyle !== style) {
         setPreviousSelectedStyle(currentStyle);
@@ -453,15 +488,43 @@ export default function App() {
     setActiveLookId(null);
 
     try {
-      const imagePart = await fileToGenerativePart(uploadedFile);
-      const prompt = `Apply a ${selectedColor ? selectedColor + ' ' : ''}${selectedStyle} hairstyle to the ${selectedGender} in the image. It is absolutely crucial that you only change the hair. The person's facial features, head shape, jawline, expression, and all other physical attributes must remain completely unchanged from the original photo. Do not alter the dimensions or structure of the face. The new hairstyle should look realistic and blend naturally with the original image.`;
+      const parts = [];
+      let prompt = '';
+
+      const userImagePart = await fileToGenerativePart(uploadedFile);
+      parts.push(userImagePart);
+
+      if (selectedStyle === COPY_STYLE_KEY && referenceImageFile) {
+        const referenceImagePart = await fileToGenerativePart(referenceImageFile);
+        parts.push(referenceImagePart);
+        prompt = `Your task is to meticulously replicate the hairstyle from the second image (the reference image) and apply it to the person in the first image (the user's photo).
+
+Analyze the reference hairstyle in extreme detail, paying close attention to the following attributes:
+- **Haircut:** Precisely replicate the overall haircut, including layers, shape, and how it frames the face.
+- **Length:** Match the exact length of the hair down to the smallest detail.
+- **Texture & Form:** Replicate the hair's texture. Accurately capture its curliness, waviness, or straightness.
+- **Volume and Shape:** Copy the overall volume and body of the hairstyle.
+- **Styling Details:** Accurately reproduce any specific styling elements like bangs, parting, braids, or updos.
+
+Apply this replicated hairstyle to the person in the first image.
+
+**CRITICAL INSTRUCTIONS:**
+1. **ONLY CHANGE THE HAIR.** The person's facial features, head shape, jawline, expression, body position, pose, clothing, and background must remain absolutely identical to the original photo.
+2. **AVOID ARTIFACTS.** Ensure there are no visual artifacts, smudges, or distortions on the person's face, neck, shoulders, or clothing. The integration of the new hair must be seamless and clean.
+3. **PRESERVE IDENTITY.** Do not alter the person's identity in any way.
+4. **SEAMLESS BLEND.** The new hairstyle must blend realistically and naturally with the user's head and the lighting of the original photo.
+
+${selectedColor ? `After replicating the style, change the hair color to ${selectedColor}.` : 'The hair color should precisely match the color from the reference image.'}`;
+      } else {
+        prompt = `Apply a ${selectedColor ? selectedColor + ' ' : ''}${selectedStyle} hairstyle to the ${selectedGender} in the image. It is absolutely crucial that you only change the hair. The person's facial features, head shape, jawline, expression, and all other physical attributes must remain completely unchanged from the original photo. Do not alter the dimensions or structure of the face. The new hairstyle should look realistic and blend naturally with the original image.`;
+      }
+      
       const textPart = { text: prompt };
+      parts.push(textPart);
 
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image-preview',
-        contents: {
-          parts: [imagePart, textPart],
-        },
+        contents: { parts },
         config: {
           responseModalities: [Modality.IMAGE, Modality.TEXT],
         },
@@ -500,7 +563,7 @@ export default function App() {
     } finally {
       setIsLoading(false);
     }
-  }, [uploadedFile, selectedStyle, selectedColor, selectedGender]);
+  }, [uploadedFile, selectedStyle, selectedColor, selectedGender, referenceImageFile]);
 
   const handleChangeColor = useCallback(async (newColor: string | null) => {
     if (!generatedImage || !selectedStyle) return;
@@ -514,10 +577,12 @@ export default function App() {
       const blob = await fetchRes.blob();
       const currentImageFile = new File([blob], "current_look.png", { type: blob.type });
       const imagePart = await fileToGenerativePart(currentImageFile);
+      
+      const styleName = selectedStyle === COPY_STYLE_KEY ? 'the existing hairstyle' : `the existing hairstyle (${selectedStyle})`
 
       const prompt = newColor
-        ? `Change the hair color in the image to ${newColor}. Keep the existing hairstyle (${selectedStyle}). It is absolutely crucial that only the hair color is changed. Do not alter the hairstyle, facial features, head shape, or background.`
-        : `Remove the artificial hair color and restore the hair to a natural, original-looking color that matches the person's features. Keep the existing hairstyle (${selectedStyle}). It is absolutely crucial that only the hair color is changed. Do not alter the hairstyle, facial features, head shape, or background.`;
+        ? `Change the hair color in the image to ${newColor}. Keep ${styleName}. It is absolutely crucial that only the hair color is changed. Do not alter the hairstyle, facial features, head shape, or background.`
+        : `Remove the artificial hair color and restore the hair to a natural, original-looking color that matches the person's features. Keep ${styleName}. It is absolutely crucial that only the hair color is changed. Do not alter the hairstyle, facial features, head shape, or background.`;
       
       const textPart = { text: prompt };
 
@@ -566,17 +631,21 @@ export default function App() {
     setActiveLookId(null);
     setResultDisplayMode('slider');
     setToggleShowGenerated(true);
+    setReferenceImageFile(null);
+    setReferenceImageUrl(null);
   }, []);
   
   // Saves the current look to localStorage
   const handleSaveLook = useCallback(() => {
     if (!originalImage || !generatedImage || isCurrentLookSaved || !selectedStyle) return;
+    
+    const styleNameToSave = selectedStyle === COPY_STYLE_KEY ? "Copied Style" : selectedStyle;
 
     const newLook: SavedLook = {
       id: Date.now(),
       before: originalImage,
       after: generatedImage,
-      style: selectedStyle,
+      style: styleNameToSave,
       color: selectedColor,
     };
 
@@ -689,6 +758,13 @@ export default function App() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-6 lg:p-8 text-white font-sans">
+      <input
+        type="file"
+        accept="image/*"
+        className="hidden"
+        ref={referenceImageInputRef}
+        onChange={handleReferenceImageChange}
+      />
       <div className="w-full max-w-4xl mx-auto">
         <header className="text-center mb-8">
           <h1 className="text-4xl sm:text-5xl font-bold tracking-tight bg-gradient-to-r from-purple-400 via-indigo-400 to-cyan-400 text-transparent bg-clip-text">
@@ -811,6 +887,28 @@ export default function App() {
                     ))}
                   </div>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6 w-full max-w-md">
+                    <button
+                        key={COPY_STYLE_KEY}
+                        onClick={handleCopyStyleClick}
+                        disabled={!originalImage || !selectedGender}
+                        className={`group p-3 flex flex-col items-center justify-center gap-2 text-center rounded-lg transition-all duration-200 border-2 
+                            ${selectedStyle === COPY_STYLE_KEY 
+                            ? 'bg-slate-600/50 border-indigo-400 ring-2 ring-indigo-300' 
+                            : 'bg-slate-700 border-slate-600 hover:border-slate-400 hover:bg-slate-600'}
+                            ${!originalImage || !selectedGender ? 'opacity-50 cursor-not-allowed' : ''}
+                        `}
+                    >
+                        {referenceImageUrl ? (
+                            <div className="w-12 h-12 rounded-md overflow-hidden">
+                                <img src={referenceImageUrl} alt="Reference hairstyle" className="w-full h-full object-cover" />
+                            </div>
+                        ) : (
+                            <div className="w-12 h-12 rounded-md bg-slate-800 flex items-center justify-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                            </div>
+                        )}
+                        <span className={`font-medium text-sm ${selectedStyle === COPY_STYLE_KEY ? 'text-white' : 'text-slate-300'}`}>Copy Style</span>
+                    </button>
                     {filteredHairstyles.length > 0 ? filteredHairstyles.map((style) => (
                       <button
                         key={style.name}
@@ -827,7 +925,7 @@ export default function App() {
                         <span className={`font-medium text-sm ${selectedStyle === style.name ? 'text-white' : 'text-slate-300'}`}>{style.name}</span>
                       </button>
                     )) : (
-                      <p className="col-span-full text-slate-400 text-center">Please select a gender to see available styles.</p>
+                      !selectedGender && <p className="col-span-full text-slate-400 text-center">Please select a gender to see available styles.</p>
                     )}
                   </div>
 
@@ -896,7 +994,7 @@ export default function App() {
               <h2 className="text-3xl font-bold mb-2 text-center">Your New Look!</h2>
               {selectedStyle && (
                 <p className="text-lg text-slate-300 mb-4 text-center">
-                  Style: <span className="font-semibold">{selectedStyle}</span>
+                  Style: <span className="font-semibold">{selectedStyle === COPY_STYLE_KEY ? "Copied Style" : selectedStyle}</span>
                   {selectedColor && ` (Color: ${selectedColor})`}
                 </p>
               )}
