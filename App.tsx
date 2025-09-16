@@ -4,17 +4,29 @@ import { GoogleGenAI, Modality } from "@google/genai";
 
 // --- Constants ---
 const HAIRSTYLES = [
-  { name: "Wavy Bob", category: "Short", icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-12 h-12 text-slate-300"><path d="M4 8c0 4.418 3.582 8 8 8s8-3.582 8-8c0-4.418-3.582-8-8-8-1.57 0-3.05.45-4.33 1.25M8 12c0 2.21 1.79 4 4 4s4-1.79 4-4"/><path d="M4 8c-2 2-2 5 0 7s5 2 7 0"/><path d="M20 8c2 2 2 5 0 7s-5 2-7 0"/></svg> },
-  { name: "Classic Bun", category: "Updo", icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-12 h-12 text-slate-300"><path d="M19 14.5c0 1.38-1.12 2.5-2.5 2.5S14 15.88 14 14.5c0-1.07.67-1.98 1.6-2.37"/><path d="M12 18H8c-2.21 0-4-1.79-4-4V9c0-2.21 1.79-4 4-4h1c1.1 0 2 .9 2 2v10.5c0 .83.67 1.5 1.5 1.5H14"/><path d="M16.5 17c1.93 0 3.5-1.57 3.5-3.5S18.43 10 16.5 10c-.3 0-.58.04-.86.11"/></svg> },
-  { name: "Sleek Ponytail", category: "Updo", icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-12 h-12 text-slate-300"><path d="M13 5c0-1.66-1.34-3-3-3S7 3.34 7 5s1.34 3 3 3h3"/><path d="M11 8V5c0-1.1.9-2 2-2s2 .9 2 2v3"/><path d="M12 18H8c-2.21 0-4-1.79-4-4V9c0-2.21 1.79-4 4-4h1c1.1 0 2 .9 2 2v1m4 0c1.1 0 2-.9 2-2s-.9-2-2-2h-1"/><path d="M16 10c-3 1.5-3 5.5 0 7s3-1.5 3-7c0-2-1-3-3-3"/></svg> },
-  { name: "Pixie Cut", category: "Short", icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-12 h-12 text-slate-300"><path d="M12 18H8c-2.21 0-4-1.79-4-4V9c0-2.21 1.79-4 4-4h1c1.1 0 2 .9 2 2v10.5c0 .83.67 1.5 1.5 1.5H14"/><path d="M10 5.5L8 4"/><path d="M13 6l-2-2"/><path d="M16 7l-2-2"/><path d="M12 11V9"/><path d="M15 12h-2"/></svg> },
-  { name: "Boho Braids", category: "Braids & Waves", icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-12 h-12 text-slate-300"><path d="M8 4l1.5 1.5L8 7"/><path d="M16 4l-1.5 1.5L16 7"/><path d="M8 20l1.5-1.5L8 17"/><path d="M16 20l-1.5-1.5L16 17"/><path d="M12 12l1.5 1.5L12 15"/><path d="M9.5 5.5s-1 2-1 6.5 1 6.5 1 6.5"/><path d="M14.5 5.5s1 2 1 6.5-1 6.5-1 6.5"/></svg> },
-  { name: "Short Spiky", category: "Short", icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-12 h-12 text-slate-300"><path d="M12 18H8c-2.21 0-4-1.79-4-4V9c0-2.21 1.79-4 4-4h1c1.1 0 2 .9 2 2v10.5c0 .83.67 1.5 1.5 1.5H14"/><path d="M12 4V2"/><path d="M15 5l1-1"/><path d="M9 5l-1-1"/><path d="M17 8l2-1"/><path d="M7 8L5 7"/></svg> },
-  { name: "Long Straight", category: "Long", icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-12 h-12 text-slate-300"><path d="M12 18H8c-2.21 0-4-1.79-4-4V9c0-2.21 1.79-4 4-4h1c1.1 0 2 .9 2 2v10.5c0 .83.67 1.5 1.5 1.5H14"/><path d="M8 4v16"/><path d="M16 4v16"/></svg> },
-  { name: "Curly Afro", category: "Short", icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-12 h-12 text-slate-300"><circle cx="12" cy="12" r="10"/><path d="M12 18H8c-2.21 0-4-1.79-4-4V9c0-2.21 1.79-4 4-4h1c1.1 0 2 .9 2 2v10.5c0 .83.67 1.5 1.5 1.5H14"/><path d="M16 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/><path d="M10 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/><path d="M13 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/></svg> },
-  { name: "Retro Waves", category: "Braids & Waves", icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-12 h-12 text-slate-300"><path d="M4 8c4-4 8 4 12 0"/><path d="M6 12c4-4 8 4 12 0"/><path d="M8 16c4-4 8 4 12 0"/><path d="M12 20c4-4 8 4 12 0"/></svg> },
+  // Women's Styles
+  { name: "Italian Bob", category: "Short", gender: "woman", icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-12 h-12 text-slate-300"><path d="M4 8c0 4.418 3.582 8 8 8s8-3.582 8-8c0-4.418-3.582-8-8-8-1.57 0-3.05.45-4.33 1.25M8 12c0 2.21 1.79 4 4 4s4-1.79 4-4"/><path d="M4 8c-2 2-2 5 0 7s5 2 7 0"/><path d="M20 8c2 2 2 5 0 7s-5 2-7 0"/></svg> },
+  { name: "Bixie Cut", category: "Short", gender: "woman", icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-12 h-12 text-slate-300"><path d="M12 18H8c-2.21 0-4-1.79-4-4V9c0-2.21 1.79-4 4-4h1c1.1 0 2 .9 2 2v10.5c0 .83.67 1.5 1.5 1.5H14"/><path d="M10 5.5L8 4"/><path d="M13 6l-2-2"/><path d="M16 7l-2-2"/><path d="M12 11V9"/><path d="M15 12h-2"/><path d="M16 14c-1 1-2 1.5-3 1.5"/></svg> },
+  { name: "Wolf Cut", category: "Layered", gender: "woman", icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-12 h-12 text-slate-300"><path d="M12 18H8c-2.21 0-4-1.79-4-4V9c0-2.21 1.79-4 4-4h1c1.1 0 2 .9 2 2v10.5c0 .83.67 1.5 1.5 1.5H14"/><path d="M9 5l-2 2m8-2l2 2m-4-3v3m-3 2l-2 3m8-3l2 3m-4 1v3"/></svg> },
+  { name: "Butterfly Cut", category: "Layered", gender: "woman", icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-12 h-12 text-slate-300"><path d="M12 18H8c-2.21 0-4-1.79-4-4V9c0-2.21 1.79-4 4-4h1c1.1 0 2 .9 2 2v10.5c0 .83.67 1.5 1.5 1.5H14"/><path d="M8 8 C 6 10, 6 14, 8 16"/><path d="M16 8 C 18 10, 18 14, 16 16"/><path d="M10 12 C 8 13, 8 15, 10 16"/><path d="M14 12 C 16 13, 16 15, 14 16"/></svg> },
+  { name: "Sleek Straight", category: "Long", gender: "woman", icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-12 h-12 text-slate-300"><path d="M12 18H8c-2.21 0-4-1.79-4-4V9c0-2.21 1.79-4 4-4h1c1.1 0 2 .9 2 2v10.5c0 .83.67 1.5 1.5 1.5H14"/><path d="M8 4v16"/><path d="M16 4v16"/></svg> },
+  { name: "Curtain Bangs", category: "Long", gender: "woman", icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-12 h-12 text-slate-300"><path d="M12 18H8c-2.21 0-4-1.79-4-4V9c0-2.21 1.79-4 4-4h1c1.1 0 2 .9 2 2v10.5c0 .83.67 1.5 1.5 1.5H14"/><path d="M9 4 C 7 8, 7 12, 9 16"/><path d="M15 4 C 17 8, 17 12, 15 16"/><path d="M12 2 L 12 6"/></svg> },
+  { name: "Deep Side Part", category: "Long", gender: "woman", icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-12 h-12 text-slate-300"><path d="M12 18H8c-2.21 0-4-1.79-4-4V9c0-2.21 1.79-4 4-4h1c1.1 0 2 .9 2 2v10.5c0 .83.67 1.5 1.5 1.5H14"/><path d="M9 4v16"/><path d="M16 4v16"/><path d="M9 4 C 14 4 16 6 16 8"/></svg> },
+  { name: "French Braid", category: "Braids & Waves", gender: "woman", icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-12 h-12 text-slate-300"><path d="M12 18H8c-2.21 0-4-1.79-4-4V9c0-2.21 1.79-4 4-4h1c1.1 0 2 .9 2 2v10.5c0 .83.67 1.5 1.5 1.5H14"/><path d="M11 4 l 2 2 l -2 2 l 2 2 l -2 2 l 2 2 l -2 2"/></svg> },
+  { name: "Boho Mermaid Waves", category: "Braids & Waves", gender: "woman", icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-12 h-12 text-slate-300"><path d="M4 8c4-4 8 4 12 0"/><path d="M6 12c4-4 8 4 12 0"/><path d="M8 16c4-4 8 4 12 0"/><path d="M12 20c4-4 8 4 12 0"/></svg> },
+  { name: "Voluminous Curls", category: "Curls", gender: "woman", icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-12 h-12 text-slate-300"><circle cx="12" cy="12" r="10"/><path d="M12 18H8c-2.21 0-4-1.79-4-4V9c0-2.21 1.79-4 4-4h1c1.1 0 2 .9 2 2v10.5c0 .83.67 1.5 1.5 1.5H14"/><path d="M16 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/><path d="M10 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/><path d="M13 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/></svg> },
+
+  // Men's Styles
+  { name: "Short Spiky", category: "Short", gender: "man", icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-12 h-12 text-slate-300"><path d="M12 18H8c-2.21 0-4-1.79-4-4V9c0-2.21 1.79-4 4-4h1c1.1 0 2 .9 2 2v10.5c0 .83.67 1.5 1.5 1.5H14"/><path d="M12 4V2"/><path d="M15 5l1-1"/><path d="M9 5l-1-1"/><path d="M17 8l2-1"/><path d="M7 8L5 7"/></svg> },
+  { name: "Crew Cut", category: "Short", gender: "man", icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-12 h-12 text-slate-300"><path d="M12 18H8c-2.21 0-4-1.79-4-4V9c0-2.21 1.79-4 4-4h1c1.1 0 2 .9 2 2v10.5c0 .83.67 1.5 1.5 1.5H14"/><path d="M12 4V3"/><path d="M14.5 5l.5-1"/><path d="M9.5 5l-.5-1"/><path d="M16 7l1-1"/><path d="M8 7l-1-1"/></svg> },
+  { name: "Undercut", category: "Long", gender: "man", icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-12 h-12 text-slate-300"><path d="M12 18H8c-2.21 0-4-1.79-4-4V9c0-2.21 1.79-4 4-4h1c1.1 0 2 .9 2 2v10.5c0 .83.67 1.5 1.5 1.5H14"/><path d="M8 9V6"/><path d="M16 9V6"/><path d="M9 5c1-2 4-2 6 0"/></svg> },
+  { name: "Pompadour", category: "Long", gender: "man", icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-12 h-12 text-slate-300"><path d="M12 18H8c-2.21 0-4-1.79-4-4V9c0-2.21 1.79-4 4-4h1c1.1 0 2 .9 2 2v10.5c0 .83.67 1.5 1.5 1.5H14"/><path d="M8 10V8"/><path d="M16 10V8"/><path d="M9 7c2-4 5-4 7 0a4 4 0 0 1-7 0z"/></svg> },
+  { name: "Buzz Cut", category: "Short", gender: "man", icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-12 h-12 text-slate-300"><path d="M12 18H8c-2.21 0-4-1.79-4-4V9c0-2.21 1.79-4 4-4h1c1.1 0 2 .9 2 2v10.5c0 .83.67 1.5 1.5 1.5H14"/><path d="M12 6v-0.5m2.5 1l0.5-0.5m-5.5 0.5l-0.5-0.5m7 2.5l0.5-0.5m-9.5 0.5l-0.5-0.5"/></svg> },
+  
+  // Unisex Styles
+  { name: "Long Straight", category: "Long", gender: "unisex", icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-12 h-12 text-slate-300"><path d="M12 18H8c-2.21 0-4-1.79-4-4V9c0-2.21 1.79-4 4-4h1c1.1 0 2 .9 2 2v10.5c0 .83.67 1.5 1.5 1.5H14"/><path d="M8 4v16"/><path d="M16 4v16"/></svg> },
+  { name: "Curly Afro", category: "Short", gender: "unisex", icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-12 h-12 text-slate-300"><circle cx="12" cy="12" r="10"/><path d="M12 18H8c-2.21 0-4-1.79-4-4V9c0-2.21 1.79-4 4-4h1c1.1 0 2 .9 2 2v10.5c0 .83.67 1.5 1.5 1.5H14"/><path d="M16 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/><path d="M10 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/><path d="M13 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/></svg> },
 ];
-const STYLE_CATEGORIES = ["All", "Short", "Long", "Updo", "Braids & Waves"];
 const HAIR_COLORS = [
     { name: "Light Golden Blonde", style: { background: 'linear-gradient(135deg, #f0e1c2, #e6c89c, #d9b87b, #c7a564)' } },
     { name: "Light Cool Brown", style: { background: 'linear-gradient(135deg, #a38e79, #8a7461, #766352, #655446)' } },
@@ -268,9 +280,11 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, beforeImage, a
 export default function App() {
   // --- State Management ---
   // Core functionality state
+  const [selectedGender, setSelectedGender] = useState<'woman' | 'man' | null>(null);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [originalImage, setOriginalImage] = useState<string | null>(null);
   const [selectedStyle, setSelectedStyle] = useState<string | null>(null);
+  const [previousSelectedStyle, setPreviousSelectedStyle] = useState<string | null>(null);
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<string>('All');
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
@@ -300,6 +314,13 @@ export default function App() {
       console.error("Failed to load saved looks:", e);
     }
   }, []);
+
+  // Reset style selections when gender changes for a cleaner UX
+  useEffect(() => {
+    setSelectedStyle(null);
+    setPreviousSelectedStyle(null);
+    setActiveCategory('All');
+  }, [selectedGender]);
 
   // Handles the file input change event
   const handleFileChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
@@ -332,10 +353,23 @@ export default function App() {
     }
   }, []);
 
-  // Handles the selection of a hairstyle
+  // Handles the selection of a hairstyle and saves the previous state for undo
   const handleStyleSelect = useCallback((style: string) => {
-    setSelectedStyle(style);
+    setSelectedStyle(currentStyle => {
+      if (currentStyle !== style) {
+        setPreviousSelectedStyle(currentStyle);
+      }
+      return style;
+    });
   }, []);
+  
+  // Reverts the hairstyle to the previously selected one
+  const handleUndoStyle = useCallback(() => {
+    if (previousSelectedStyle) {
+      setSelectedStyle(previousSelectedStyle);
+      setPreviousSelectedStyle(null); // Allows for only one step back
+    }
+  }, [previousSelectedStyle]);
 
   // Enhances the original image to a studio-quality portrait
   const handleEnhanceImage = useCallback(async () => {
@@ -346,7 +380,7 @@ export default function App() {
 
     try {
       const imagePart = await fileToGenerativePart(initialFile);
-      const textPart = { text: "Transform this photo into a high-quality studio portrait. Apply professional studio lighting to add depth and dimension to the subject's face. Replace the existing background with a clean, neutral studio backdrop (e.g., soft grey or off-white). Perform subtle, natural skin smoothing to reduce minor blemishes and imperfections, while preserving the original skin texture to avoid an artificial or over-processed look. Increase the overall image sharpness and clarity. It is absolutely crucial that the person's facial features, structure, and expression remain completely unchanged." };
+      const textPart = { text: "Transform this photo into a high-quality studio portrait. Apply professional studio lighting to add depth and dimension to the subject's face. Replace the existing background with a clean, neutral studio backdrop (e.g., soft grey or off-white). Perform subtle, natural skin smoothing to reduce minor blemishes and imperfections, while preserving the original skin texture to avoid an artificial or over-processed look. Increase the overall image sharpness and clarity. It is absolutely crucial that the person's facial features, facial structure, head shape, and expression remain completely unchanged. Do not stretch, compress, or otherwise alter the dimensions of the face." };
 
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image-preview',
@@ -397,7 +431,7 @@ export default function App() {
 
   // Generates the new look using the Gemini API
   const handleGenerateLook = useCallback(async () => {
-    if (!uploadedFile || !selectedStyle) return;
+    if (!uploadedFile || !selectedStyle || !selectedGender) return;
 
     setIsLoading(true);
     setError(null);
@@ -406,7 +440,7 @@ export default function App() {
 
     try {
       const imagePart = await fileToGenerativePart(uploadedFile);
-      const prompt = `Apply a ${selectedColor ? selectedColor + ' ' : ''}${selectedStyle} hairstyle to the person in the image. It is absolutely crucial that you only change the hair. The person's facial features, head shape, expression, and all other physical attributes must remain completely unchanged from the original photo. The new hairstyle should look realistic and blend naturally with the original image.`;
+      const prompt = `Apply a ${selectedColor ? selectedColor + ' ' : ''}${selectedStyle} hairstyle to the ${selectedGender} in the image. It is absolutely crucial that you only change the hair. The person's facial features, head shape, jawline, expression, and all other physical attributes must remain completely unchanged from the original photo. Do not alter the dimensions or structure of the face. The new hairstyle should look realistic and blend naturally with the original image.`;
       const textPart = { text: prompt };
 
       const response = await ai.models.generateContent({
@@ -452,12 +486,13 @@ export default function App() {
     } finally {
       setIsLoading(false);
     }
-  }, [uploadedFile, selectedStyle, selectedColor]);
+  }, [uploadedFile, selectedStyle, selectedColor, selectedGender]);
 
   // Resets the state to allow the user to try another style with the same photo
   const handleTryAnotherStyle = useCallback(() => {
     setGeneratedImage(null);
     setSelectedStyle(null);
+    setPreviousSelectedStyle(null);
     setSelectedColor(null);
     setActiveCategory('All');
     setError(null);
@@ -488,31 +523,68 @@ export default function App() {
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedLooks));
   }, [savedLooks]);
 
-  // Clears all saved looks
+  // Clears all saved looks and resets the UI to a consistent state
   const handleClearAllLooks = useCallback(() => {
     if (window.confirm("Are you sure you want to delete all your saved looks? This action cannot be undone.")) {
       setSavedLooks([]);
       localStorage.removeItem(LOCAL_STORAGE_KEY);
+      // If a result is being shown, reset the view to the selection screen
+      if (generatedImage) {
+        handleTryAnotherStyle();
+      }
     }
-  }, []);
+  }, [generatedImage, handleTryAnotherStyle]);
   
   // Sets a saved look as the active view
-  const handleViewLook = useCallback((look: SavedLook) => {
-    setOriginalImage(look.before);
-    setGeneratedImage(look.after);
-    setActiveLookId(look.id);
-    setSelectedStyle(null);
-    setSelectedColor(null);
-    setActiveCategory('All');
-    setError(null);
-    setIsCurrentLookSaved(true);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+  const handleViewLook = useCallback(async (look: SavedLook) => {
+    try {
+      // Set images to display the saved look result
+      setOriginalImage(look.before);
+      setGeneratedImage(look.after);
+
+      // Convert the base64 'before' image back to a File object.
+      // This is crucial so that the "Try Another Style" button works correctly,
+      // as the generation function requires a File object.
+      const fetchRes = await fetch(look.before);
+      const blob = await fetchRes.blob();
+      const file = new File([blob], `saved_look_${look.id}.png`, { type: blob.type });
+      setUploadedFile(file);
+      
+      // Reset styling state and scroll to the top to show the result
+      setActiveLookId(look.id);
+      setSelectedStyle(null);
+      setPreviousSelectedStyle(null);
+      setSelectedColor(null);
+      setActiveCategory('All');
+      setError(null);
+      setIsCurrentLookSaved(true);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (e) {
+      console.error("Error preparing saved look for re-styling:", e);
+      // Still show the look, but inform the user re-styling might fail.
+      setError("Could not fully load the image for re-styling. You can view it, but generating new styles from it might not work.");
+      // Still display the look even if file conversion fails
+      setOriginalImage(look.before);
+      setGeneratedImage(look.after);
+      setActiveLookId(look.id);
+      setIsCurrentLookSaved(true);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   }, []);
 
-  const isGenerateButtonDisabled = !originalImage || !selectedStyle || isLoading;
-  const filteredHairstyles = activeCategory === 'All' 
-    ? HAIRSTYLES 
-    : HAIRSTYLES.filter(style => style.category === activeCategory);
+  const isGenerateButtonDisabled = !originalImage || !selectedStyle || isLoading || !selectedGender;
+
+  const availableCategories = selectedGender
+    ? ['All', ...Array.from(new Set(HAIRSTYLES
+        .filter(style => style.gender === selectedGender || style.gender === 'unisex')
+        .map(style => style.category)
+      ))]
+    : ['All'];
+
+  const filteredHairstyles = selectedGender ? HAIRSTYLES
+      .filter(style => style.gender === selectedGender || style.gender === 'unisex')
+      .filter(style => activeCategory === 'All' ? true : style.category === activeCategory)
+      : [];
   
   const Footer: React.FC = () => (
     <footer className="w-full max-w-4xl mx-auto mt-8 py-6 border-t border-slate-700 text-center">
@@ -546,139 +618,183 @@ export default function App() {
           
           {!generatedImage ? (
             // --- INTERACTIVE SECTION ---
-            <div className="flex flex-col lg:flex-row items-center justify-center gap-8">
-              <div className="flex-shrink-0 flex flex-col items-center space-y-4">
-                <div className="w-64 h-64 md:w-80 md:h-80 bg-slate-700/50 rounded-lg flex items-center justify-center border-2 border-dashed border-slate-600">
-                  {originalImage ? (
-                    <img src={originalImage} alt="Original upload" className="w-full h-full object-cover rounded-lg" />
-                  ) : (
-                    <span className="text-slate-400">Your Photo Here</span>
-                  )}
-                </div>
-                <label className="cursor-pointer bg-indigo-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-indigo-700 transition-all duration-300 shadow-md">
-                  Choose Photo
-                  <input type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
-                </label>
-                {originalImage && (
-                  <div className="mt-4 w-full max-w-xs text-center">
-                    <h2 className="text-lg font-semibold mb-2 text-slate-300">Want a better shot?</h2>
-                    {!isEnhanced ? (
-                      <button 
-                        onClick={handleEnhanceImage}
-                        disabled={isEnhancing}
-                        className="w-full bg-amber-500 text-slate-900 font-bold py-2 px-4 rounded-lg hover:bg-amber-400 transition-all duration-300 disabled:bg-slate-600 disabled:opacity-50 flex items-center justify-center gap-2"
+            <div>
+              <div className="flex flex-col items-center mb-8">
+                  <h2 className="text-2xl font-semibold mb-4 text-slate-200">1. Who are you styling?</h2>
+                  <div className="flex justify-center gap-4 w-full max-w-sm">
+                      <button
+                          onClick={() => setSelectedGender('woman')}
+                          className={`w-full text-lg font-bold py-3 px-6 rounded-lg border-2 transition-all duration-200 ${
+                              selectedGender === 'woman'
+                              ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg'
+                              : 'bg-slate-700 border-slate-600 hover:bg-slate-600 hover:border-slate-500 text-slate-300'
+                          }`}
                       >
-                        {isEnhancing ? (
-                          <>
-                            <div className="w-5 h-5 border-2 border-dashed rounded-full animate-spin border-slate-900"></div>
-                            Enhancing...
-                          </>
-                        ) : (
-                          "✨ Studio Enhance"
-                        )}
+                          Woman
                       </button>
-                    ) : (
-                      <div className="flex gap-2">
-                        <p className="flex-grow text-left py-2 px-3 bg-green-900/50 text-green-300 rounded-lg text-sm">✓ Enhanced!</p>
-                        <button 
-                          onClick={handleRevertToOriginal}
-                          className="bg-slate-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-slate-500 transition-colors duration-300 text-sm"
-                        >
-                          Revert
-                        </button>
-                      </div>
-                    )}
-                    <p className="text-slate-400 text-xs mt-2">Let AI give your photo a professional studio look.</p>
+                      <button
+                          onClick={() => setSelectedGender('man')}
+                          className={`w-full text-lg font-bold py-3 px-6 rounded-lg border-2 transition-all duration-200 ${
+                              selectedGender === 'man'
+                              ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg'
+                              : 'bg-slate-700 border-slate-600 hover:bg-slate-600 hover:border-slate-500 text-slate-300'
+                          }`}
+                      >
+                          Man
+                      </button>
                   </div>
-                )}
               </div>
 
-              <div className="w-full lg:w-1/2 flex flex-col items-center lg:items-start">
-                <h2 className="text-2xl font-semibold mb-4 text-slate-200">1. Select a Style</h2>
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {STYLE_CATEGORIES.map((category) => (
-                    <button
-                      key={category}
-                      onClick={() => setActiveCategory(category)}
-                      disabled={!originalImage}
-                      className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                        activeCategory === category
-                          ? 'bg-indigo-500 text-white'
-                          : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                      } ${!originalImage ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    >
-                      {category}
-                    </button>
-                  ))}
-                </div>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6 w-full max-w-md">
-                  {filteredHairstyles.map((style) => (
-                    <button
-                      key={style.name}
-                      onClick={() => handleStyleSelect(style.name)}
-                      disabled={!originalImage}
-                      className={`group p-3 flex flex-col items-center justify-center gap-2 text-center rounded-lg transition-all duration-200 border-2 
-                        ${selectedStyle === style.name 
-                          ? 'bg-slate-600/50 border-indigo-400 ring-2 ring-indigo-300' 
-                          : 'bg-slate-700 border-slate-600 hover:border-slate-400 hover:bg-slate-600'}
-                        ${!originalImage ? 'opacity-50 cursor-not-allowed' : ''}
-                      `}
-                    >
-                      {React.cloneElement(style.icon, { className: `w-12 h-12 transition-colors duration-200 ${selectedStyle === style.name ? 'text-indigo-300' : 'text-slate-400 group-hover:text-slate-200'}` })}
-                      <span className={`font-medium text-sm ${selectedStyle === style.name ? 'text-white' : 'text-slate-300'}`}>{style.name}</span>
-                    </button>
-                  ))}
+              <div className={`flex flex-col lg:flex-row items-start justify-center gap-8 transition-opacity duration-500 ${!selectedGender ? 'opacity-50 cursor-not-allowed pointer-events-none' : 'opacity-100'}`}>
+                <div className="flex-shrink-0 flex flex-col items-center space-y-4">
+                  <h2 className="text-2xl font-semibold mb-0 text-slate-200">2. Upload Photo</h2>
+                  <div className="w-64 h-64 md:w-80 md:h-80 bg-slate-700/50 rounded-lg flex items-center justify-center border-2 border-dashed border-slate-600">
+                    {originalImage ? (
+                      <img src={originalImage} alt="Original upload" className="w-full h-full object-cover rounded-lg" />
+                    ) : (
+                      <span className="text-slate-400">Your Photo Here</span>
+                    )}
+                  </div>
+                  <label className="cursor-pointer bg-indigo-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-indigo-700 transition-all duration-300 shadow-md">
+                    Choose Photo
+                    <input type="file" accept="image/*" className="hidden" onChange={handleFileChange} disabled={!selectedGender}/>
+                  </label>
+                  {originalImage && (
+                    <div className="mt-4 w-full max-w-xs text-center">
+                      <h2 className="text-lg font-semibold mb-2 text-slate-300">Want a better shot?</h2>
+                      {!isEnhanced ? (
+                        <button 
+                          onClick={handleEnhanceImage}
+                          disabled={isEnhancing || !selectedGender}
+                          className="w-full bg-amber-500 text-slate-900 font-bold py-2 px-4 rounded-lg hover:bg-amber-400 transition-all duration-300 disabled:bg-slate-600 disabled:opacity-50 flex items-center justify-center gap-2"
+                        >
+                          {isEnhancing ? (
+                            <>
+                              <div className="w-5 h-5 border-2 border-dashed rounded-full animate-spin border-slate-900"></div>
+                              Enhancing...
+                            </>
+                          ) : (
+                            "✨ Studio Enhance"
+                          )}
+                        </button>
+                      ) : (
+                        <div className="flex gap-2">
+                          <p className="flex-grow text-left py-2 px-3 bg-green-900/50 text-green-300 rounded-lg text-sm">✓ Enhanced!</p>
+                          <button 
+                            onClick={handleRevertToOriginal}
+                            className="bg-slate-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-slate-500 transition-colors duration-300 text-sm"
+                          >
+                            Revert
+                          </button>
+                        </div>
+                      )}
+                      <p className="text-slate-400 text-xs mt-2">Let AI give your photo a professional studio look.</p>
+                    </div>
+                  )}
                 </div>
 
-                <h2 className="text-2xl font-semibold mb-4 text-slate-200">2. Choose a Color <span className="text-slate-400 text-lg">(Optional)</span></h2>
-                <div className="grid grid-cols-3 gap-4 mb-6 w-full max-w-md">
-                   <button
-                        key="no-color"
-                        onClick={() => setSelectedColor(null)}
-                        disabled={!originalImage}
-                        aria-label="Keep original hair color"
-                        title="Keep Original Color"
-                        className={`w-16 h-16 rounded-full border-2 transition-all duration-200 flex items-center justify-center bg-slate-700/50
-                            ${!selectedColor 
-                                ? 'border-sky-400 ring-4 ring-sky-400/30' 
-                                : 'border-slate-500'}
-                            ${!originalImage 
-                                ? 'opacity-50 cursor-not-allowed' 
-                                : 'hover:border-sky-400'}`}
+                <div className="w-full lg:w-1/2 flex flex-col items-center lg:items-start">
+                  <div className="w-full max-w-md flex justify-between items-center mb-4">
+                    <h2 className="text-2xl font-semibold text-slate-200">3. Select a Style</h2>
+                    <button
+                        onClick={handleUndoStyle}
+                        disabled={!previousSelectedStyle}
+                        className="text-sm font-semibold text-sky-400 hover:text-sky-300 disabled:text-slate-500 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
+                        aria-label="Undo last style selection"
                     >
-                        <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path>
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M9.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L7.414 9H15a1 1 0 110 2H7.414l2.293 2.293a1 1 0 010 1.414z" clipRule="evenodd" />
                         </svg>
+                        Undo
                     </button>
-                   {HAIR_COLORS.map((color) => (
-                    <button
-                      key={color.name}
-                      onClick={() => setSelectedColor(color.name === selectedColor ? null : color.name)}
-                      disabled={!originalImage}
-                      aria-label={`Select ${color.name} hair color`}
-                      className={`w-16 h-16 rounded-full border-2 transition-all duration-200 ${
-                        selectedColor === color.name 
-                            ? 'border-sky-400 ring-4 ring-sky-400/30' 
-                            : 'border-slate-500'
-                      } ${!originalImage 
-                            ? 'opacity-50 cursor-not-allowed' 
-                            : 'hover:border-sky-400'}`}
-                      style={color.style}
-                    />
-                  ))}
-                </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {availableCategories.map((category) => (
+                      <button
+                        key={category}
+                        onClick={() => setActiveCategory(category)}
+                        disabled={!originalImage || !selectedGender}
+                        className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                          activeCategory === category
+                            ? 'bg-indigo-500 text-white'
+                            : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                        } ${!originalImage || !selectedGender ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      >
+                        {category}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6 w-full max-w-md">
+                    {filteredHairstyles.length > 0 ? filteredHairstyles.map((style) => (
+                      <button
+                        key={style.name}
+                        onClick={() => handleStyleSelect(style.name)}
+                        disabled={!originalImage || !selectedGender}
+                        className={`group p-3 flex flex-col items-center justify-center gap-2 text-center rounded-lg transition-all duration-200 border-2 
+                          ${selectedStyle === style.name 
+                            ? 'bg-slate-600/50 border-indigo-400 ring-2 ring-indigo-300' 
+                            : 'bg-slate-700 border-slate-600 hover:border-slate-400 hover:bg-slate-600'}
+                          ${!originalImage || !selectedGender ? 'opacity-50 cursor-not-allowed' : ''}
+                        `}
+                      >
+                        {React.cloneElement(style.icon, { className: `w-12 h-12 transition-colors duration-200 ${selectedStyle === style.name ? 'text-indigo-300' : 'text-slate-400 group-hover:text-slate-200'}` })}
+                        <span className={`font-medium text-sm ${selectedStyle === style.name ? 'text-white' : 'text-slate-300'}`}>{style.name}</span>
+                      </button>
+                    )) : (
+                      <p className="col-span-full text-slate-400 text-center">Please select a gender to see available styles.</p>
+                    )}
+                  </div>
 
-                <h2 className="text-2xl font-semibold mb-4 text-slate-200">3. Generate</h2>
-                <button
-                  onClick={handleGenerateLook}
-                  disabled={isGenerateButtonDisabled}
-                  className="w-full max-w-md bg-green-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-700 transition-all duration-300 disabled:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed text-lg shadow-lg"
-                >
-                  Generate New Look
-                </button>
-                {error && (
-                  <p className="text-red-400 mt-4 text-center w-full max-w-sm">{error}</p>
-                )}
+                  <h2 className="text-2xl font-semibold mb-4 text-slate-200">4. Choose a Color <span className="text-slate-400 text-lg">(Optional)</span></h2>
+                  <div className="grid grid-cols-3 gap-4 mb-6 w-full max-w-md">
+                    <button
+                          key="no-color"
+                          onClick={() => setSelectedColor(null)}
+                          disabled={!originalImage || !selectedGender}
+                          aria-label="Keep original hair color"
+                          title="Keep Original Color"
+                          className={`w-16 h-16 rounded-full border-2 transition-all duration-200 flex items-center justify-center bg-slate-700/50
+                              ${!selectedColor 
+                                  ? 'border-sky-400 ring-4 ring-sky-400/30' 
+                                  : 'border-slate-500'}
+                              ${!originalImage || !selectedGender
+                                  ? 'opacity-50 cursor-not-allowed' 
+                                  : 'hover:border-sky-400'}`}
+                      >
+                          <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path>
+                          </svg>
+                      </button>
+                    {HAIR_COLORS.map((color) => (
+                      <button
+                        key={color.name}
+                        onClick={() => setSelectedColor(color.name === selectedColor ? null : color.name)}
+                        disabled={!originalImage || !selectedGender}
+                        aria-label={`Select ${color.name} hair color`}
+                        className={`w-16 h-16 rounded-full border-2 transition-all duration-200 ${
+                          selectedColor === color.name 
+                              ? 'border-sky-400 ring-4 ring-sky-400/30' 
+                              : 'border-slate-500'
+                        } ${!originalImage || !selectedGender
+                              ? 'opacity-50 cursor-not-allowed' 
+                              : 'hover:border-sky-400'}`}
+                        style={color.style}
+                      />
+                    ))}
+                  </div>
+
+                  <h2 className="text-2xl font-semibold mb-4 text-slate-200">5. Generate</h2>
+                  <button
+                    onClick={handleGenerateLook}
+                    disabled={isGenerateButtonDisabled}
+                    className="w-full max-w-md bg-green-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-700 transition-all duration-300 disabled:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed text-lg shadow-lg"
+                  >
+                    Generate New Look
+                  </button>
+                  {error && (
+                    <p className="text-red-400 mt-4 text-center w-full max-w-sm">{error}</p>
+                  )}
+                </div>
               </div>
             </div>
           ) : (
