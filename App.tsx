@@ -5,27 +5,27 @@ import { GoogleGenAI, Modality } from "@google/genai";
 // --- Constants ---
 const HAIRSTYLES = [
   // Women's Styles
-  { name: "Italian Bob", category: "Short", gender: "woman", icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-12 h-12 text-slate-300"><path d="M4 8c0 4.418 3.582 8 8 8s8-3.582 8-8c0-4.418-3.582-8-8-8-1.57 0-3.05.45-4.33 1.25M8 12c0 2.21 1.79 4 4 4s4-1.79 4-4"/><path d="M4 8c-2 2-2 5 0 7s5 2 7 0"/><path d="M20 8c2 2 2 5 0 7s-5 2-7 0"/></svg> },
-  { name: "Bixie Cut", category: "Short", gender: "woman", icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-12 h-12 text-slate-300"><path d="M12 18H8c-2.21 0-4-1.79-4-4V9c0-2.21 1.79-4 4-4h1c1.1 0 2 .9 2 2v10.5c0 .83.67 1.5 1.5 1.5H14"/><path d="M10 5.5L8 4"/><path d="M13 6l-2-2"/><path d="M16 7l-2-2"/><path d="M12 11V9"/><path d="M15 12h-2"/><path d="M16 14c-1 1-2 1.5-3 1.5"/></svg> },
-  { name: "Wolf Cut", category: "Layered", gender: "woman", icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-12 h-12 text-slate-300"><path d="M12 18H8c-2.21 0-4-1.79-4-4V9c0-2.21 1.79-4 4-4h1c1.1 0 2 .9 2 2v10.5c0 .83.67 1.5 1.5 1.5H14"/><path d="M9 5l-2 2m8-2l2 2m-4-3v3m-3 2l-2 3m8-3l2 3m-4 1v3"/></svg> },
-  { name: "Butterfly Cut", category: "Layered", gender: "woman", icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-12 h-12 text-slate-300"><path d="M12 18H8c-2.21 0-4-1.79-4-4V9c0-2.21 1.79-4 4-4h1c1.1 0 2 .9 2 2v10.5c0 .83.67 1.5 1.5 1.5H14"/><path d="M8 8 C 6 10, 6 14, 8 16"/><path d="M16 8 C 18 10, 18 14, 16 16"/><path d="M10 12 C 8 13, 8 15, 10 16"/><path d="M14 12 C 16 13, 16 15, 14 16"/></svg> },
-  { name: "Sleek Straight", category: "Long", gender: "woman", icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-12 h-12 text-slate-300"><path d="M12 18H8c-2.21 0-4-1.79-4-4V9c0-2.21 1.79-4 4-4h1c1.1 0 2 .9 2 2v10.5c0 .83.67 1.5 1.5 1.5H14"/><path d="M8 4v16"/><path d="M16 4v16"/></svg> },
-  { name: "Curtain Bangs", category: "Long", gender: "woman", icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-12 h-12 text-slate-300"><path d="M12 18H8c-2.21 0-4-1.79-4-4V9c0-2.21 1.79-4 4-4h1c1.1 0 2 .9 2 2v10.5c0 .83.67 1.5 1.5 1.5H14"/><path d="M9 4 C 7 8, 7 12, 9 16"/><path d="M15 4 C 17 8, 17 12, 15 16"/><path d="M12 2 L 12 6"/></svg> },
-  { name: "Deep Side Part", category: "Long", gender: "woman", icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-12 h-12 text-slate-300"><path d="M12 18H8c-2.21 0-4-1.79-4-4V9c0-2.21 1.79-4 4-4h1c1.1 0 2 .9 2 2v10.5c0 .83.67 1.5 1.5 1.5H14"/><path d="M9 4v16"/><path d="M16 4v16"/><path d="M9 4 C 14 4 16 6 16 8"/></svg> },
-  { name: "French Braid", category: "Braids & Waves", gender: "woman", icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-12 h-12 text-slate-300"><path d="M12 18H8c-2.21 0-4-1.79-4-4V9c0-2.21 1.79-4 4-4h1c1.1 0 2 .9 2 2v10.5c0 .83.67 1.5 1.5 1.5H14"/><path d="M11 4 l 2 2 l -2 2 l 2 2 l -2 2 l 2 2 l -2 2"/></svg> },
-  { name: "Boho Mermaid Waves", category: "Braids & Waves", gender: "woman", icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-12 h-12 text-slate-300"><path d="M4 8c4-4 8 4 12 0"/><path d="M6 12c4-4 8 4 12 0"/><path d="M8 16c4-4 8 4 12 0"/><path d="M12 20c4-4 8 4 12 0"/></svg> },
-  { name: "Voluminous Curls", category: "Curls", gender: "woman", icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-12 h-12 text-slate-300"><circle cx="12" cy="12" r="10"/><path d="M12 18H8c-2.21 0-4-1.79-4-4V9c0-2.21 1.79-4 4-4h1c1.1 0 2 .9 2 2v10.5c0 .83.67 1.5 1.5 1.5H14"/><path d="M16 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/><path d="M10 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/><path d="M13 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/></svg> },
+  { name: "Italian Bob", category: "Short", gender: "woman", icon: <div className="w-12 h-12 rounded-md overflow-hidden filter grayscale contrast-125"><img src="https://picsum.photos/seed/italian_bob/64/64" alt="Italian Bob hairstyle" className="w-full h-full object-cover" /></div> },
+  { name: "Bixie Cut", category: "Short", gender: "woman", icon: <div className="w-12 h-12 rounded-md overflow-hidden filter grayscale contrast-125"><img src="https://picsum.photos/seed/bixie_cut/64/64" alt="Bixie Cut hairstyle" className="w-full h-full object-cover" /></div> },
+  { name: "Wolf Cut", category: "Layered", gender: "woman", icon: <div className="w-12 h-12 rounded-md overflow-hidden filter grayscale contrast-125"><img src="https://picsum.photos/seed/wolf_cut/64/64" alt="Wolf Cut hairstyle" className="w-full h-full object-cover" /></div> },
+  { name: "Butterfly Cut", category: "Layered", gender: "woman", icon: <div className="w-12 h-12 rounded-md overflow-hidden filter grayscale contrast-125"><img src="https://picsum.photos/seed/butterfly_cut/64/64" alt="Butterfly Cut hairstyle" className="w-full h-full object-cover" /></div> },
+  { name: "Sleek Straight", category: "Long", gender: "woman", icon: <div className="w-12 h-12 rounded-md overflow-hidden filter grayscale contrast-125"><img src="https://picsum.photos/seed/sleek_straight/64/64" alt="Sleek Straight hairstyle" className="w-full h-full object-cover" /></div> },
+  { name: "Curtain Bangs", category: "Long", gender: "woman", icon: <div className="w-12 h-12 rounded-md overflow-hidden filter grayscale contrast-125"><img src="https://picsum.photos/seed/curtain_bangs/64/64" alt="Curtain Bangs hairstyle" className="w-full h-full object-cover" /></div> },
+  { name: "Deep Side Part", category: "Long", gender: "woman", icon: <div className="w-12 h-12 rounded-md overflow-hidden filter grayscale contrast-125"><img src="https://picsum.photos/seed/deep_side_part/64/64" alt="Deep Side Part hairstyle" className="w-full h-full object-cover" /></div> },
+  { name: "French Braid", category: "Braids & Waves", gender: "woman", icon: <div className="w-12 h-12 rounded-md overflow-hidden filter grayscale contrast-125"><img src="https://picsum.photos/seed/french_braid/64/64" alt="French Braid hairstyle" className="w-full h-full object-cover" /></div> },
+  { name: "Boho Mermaid Waves", category: "Braids & Waves", gender: "woman", icon: <div className="w-12 h-12 rounded-md overflow-hidden filter grayscale contrast-125"><img src="https://picsum.photos/seed/boho_waves/64/64" alt="Boho Mermaid Waves hairstyle" className="w-full h-full object-cover" /></div> },
+  { name: "Voluminous Curls", category: "Curls", gender: "woman", icon: <div className="w-12 h-12 rounded-md overflow-hidden filter grayscale contrast-125"><img src="https://picsum.photos/seed/voluminous_curls/64/64" alt="Voluminous Curls hairstyle" className="w-full h-full object-cover" /></div> },
 
   // Men's Styles
-  { name: "Short Spiky", category: "Short", gender: "man", icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-12 h-12 text-slate-300"><path d="M12 18H8c-2.21 0-4-1.79-4-4V9c0-2.21 1.79-4 4-4h1c1.1 0 2 .9 2 2v10.5c0 .83.67 1.5 1.5 1.5H14"/><path d="M12 4V2"/><path d="M15 5l1-1"/><path d="M9 5l-1-1"/><path d="M17 8l2-1"/><path d="M7 8L5 7"/></svg> },
-  { name: "Crew Cut", category: "Short", gender: "man", icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-12 h-12 text-slate-300"><path d="M12 18H8c-2.21 0-4-1.79-4-4V9c0-2.21 1.79-4 4-4h1c1.1 0 2 .9 2 2v10.5c0 .83.67 1.5 1.5 1.5H14"/><path d="M12 4V3"/><path d="M14.5 5l.5-1"/><path d="M9.5 5l-.5-1"/><path d="M16 7l1-1"/><path d="M8 7l-1-1"/></svg> },
-  { name: "Undercut", category: "Long", gender: "man", icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-12 h-12 text-slate-300"><path d="M12 18H8c-2.21 0-4-1.79-4-4V9c0-2.21 1.79-4 4-4h1c1.1 0 2 .9 2 2v10.5c0 .83.67 1.5 1.5 1.5H14"/><path d="M8 9V6"/><path d="M16 9V6"/><path d="M9 5c1-2 4-2 6 0"/></svg> },
-  { name: "Pompadour", category: "Long", gender: "man", icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-12 h-12 text-slate-300"><path d="M12 18H8c-2.21 0-4-1.79-4-4V9c0-2.21 1.79-4 4-4h1c1.1 0 2 .9 2 2v10.5c0 .83.67 1.5 1.5 1.5H14"/><path d="M8 10V8"/><path d="M16 10V8"/><path d="M9 7c2-4 5-4 7 0a4 4 0 0 1-7 0z"/></svg> },
-  { name: "Buzz Cut", category: "Short", gender: "man", icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-12 h-12 text-slate-300"><path d="M12 18H8c-2.21 0-4-1.79-4-4V9c0-2.21 1.79-4 4-4h1c1.1 0 2 .9 2 2v10.5c0 .83.67 1.5 1.5 1.5H14"/><path d="M12 6v-0.5m2.5 1l0.5-0.5m-5.5 0.5l-0.5-0.5m7 2.5l0.5-0.5m-9.5 0.5l-0.5-0.5"/></svg> },
+  { name: "Short Spiky", category: "Short", gender: "man", icon: <div className="w-12 h-12 rounded-md overflow-hidden filter grayscale contrast-125"><img src="https://picsum.photos/seed/short_spiky/64/64" alt="Short Spiky hairstyle" className="w-full h-full object-cover" /></div> },
+  { name: "Crew Cut", category: "Short", gender: "man", icon: <div className="w-12 h-12 rounded-md overflow-hidden filter grayscale contrast-125"><img src="https://picsum.photos/seed/crew_cut/64/64" alt="Crew Cut hairstyle" className="w-full h-full object-cover" /></div> },
+  { name: "Undercut", category: "Long", gender: "man", icon: <div className="w-12 h-12 rounded-md overflow-hidden filter grayscale contrast-125"><img src="https://picsum.photos/seed/undercut/64/64" alt="Undercut hairstyle" className="w-full h-full object-cover" /></div> },
+  { name: "Pompadour", category: "Long", gender: "man", icon: <div className="w-12 h-12 rounded-md overflow-hidden filter grayscale contrast-125"><img src="https://picsum.photos/seed/pompadour/64/64" alt="Pompadour hairstyle" className="w-full h-full object-cover" /></div> },
+  { name: "Buzz Cut", category: "Short", gender: "man", icon: <div className="w-12 h-12 rounded-md overflow-hidden filter grayscale contrast-125"><img src="https://picsum.photos/seed/buzz_cut/64/64" alt="Buzz Cut hairstyle" className="w-full h-full object-cover" /></div> },
   
   // Unisex Styles
-  { name: "Long Straight", category: "Long", gender: "unisex", icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-12 h-12 text-slate-300"><path d="M12 18H8c-2.21 0-4-1.79-4-4V9c0-2.21 1.79-4 4-4h1c1.1 0 2 .9 2 2v10.5c0 .83.67 1.5 1.5 1.5H14"/><path d="M8 4v16"/><path d="M16 4v16"/></svg> },
-  { name: "Curly Afro", category: "Short", gender: "unisex", icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-12 h-12 text-slate-300"><circle cx="12" cy="12" r="10"/><path d="M12 18H8c-2.21 0-4-1.79-4-4V9c0-2.21 1.79-4 4-4h1c1.1 0 2 .9 2 2v10.5c0 .83.67 1.5 1.5 1.5H14"/><path d="M16 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/><path d="M10 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/><path d="M13 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/></svg> },
+  { name: "Long Straight", category: "Long", gender: "unisex", icon: <div className="w-12 h-12 rounded-md overflow-hidden filter grayscale contrast-125"><img src="https://picsum.photos/seed/long_straight/64/64" alt="Long Straight hairstyle" className="w-full h-full object-cover" /></div> },
+  { name: "Curly Afro", category: "Short", gender: "unisex", icon: <div className="w-12 h-12 rounded-md overflow-hidden filter grayscale contrast-125"><img src="https://picsum.photos/seed/curly_afro/64/64" alt="Curly Afro hairstyle" className="w-full h-full object-cover" /></div> },
 ];
 const HAIR_COLORS = [
     { name: "Light Golden Blonde", style: { background: 'linear-gradient(135deg, #f0e1c2, #e6c89c, #d9b87b, #c7a564)' } },
@@ -380,7 +380,7 @@ export default function App() {
 
     try {
       const imagePart = await fileToGenerativePart(initialFile);
-      const textPart = { text: "Transform this photo into a high-quality studio portrait. Apply professional studio lighting to add depth and dimension to the subject's face. Replace the existing background with a clean, neutral studio backdrop (e.g., soft grey or off-white). Perform subtle, natural skin smoothing to reduce minor blemishes and imperfections, while preserving the original skin texture to avoid an artificial or over-processed look. Increase the overall image sharpness and clarity. It is absolutely crucial that the person's facial features, facial structure, head shape, and expression remain completely unchanged. Do not stretch, compress, or otherwise alter the dimensions of the face." };
+      const textPart = { text: "Transform this photo into a high-quality studio portrait. Apply professional studio lighting to add depth and dimension to the subject's face. Replace the existing background with a clean, neutral studio backdrop (e.g., soft grey or off-white). Perform subtle, natural skin smoothing to reduce minor blemishes and imperfections, making the skin appear more matte by removing oil and shine, while preserving the original skin texture. Increase the overall image sharpness and clarity. It is absolutely crucial that the person's facial features, facial structure, head shape, and expression remain completely unchanged. Do not stretch, compress, or otherwise alter the dimensions of the face." };
 
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image-preview',
@@ -614,7 +614,7 @@ export default function App() {
         </header>
 
         <main className="bg-slate-800 rounded-2xl shadow-2xl p-6 sm:p-8 relative overflow-hidden">
-          {isLoading && <LoadingSpinner />}
+          {isLoading && !generatedImage && <LoadingSpinner />}
           
           {!generatedImage ? (
             // --- INTERACTIVE SECTION ---
@@ -737,7 +737,7 @@ export default function App() {
                           ${!originalImage || !selectedGender ? 'opacity-50 cursor-not-allowed' : ''}
                         `}
                       >
-                        {React.cloneElement(style.icon, { className: `w-12 h-12 transition-colors duration-200 ${selectedStyle === style.name ? 'text-indigo-300' : 'text-slate-400 group-hover:text-slate-200'}` })}
+                        {style.icon}
                         <span className={`font-medium text-sm ${selectedStyle === style.name ? 'text-white' : 'text-slate-300'}`}>{style.name}</span>
                       </button>
                     )) : (
@@ -787,9 +787,16 @@ export default function App() {
                   <button
                     onClick={handleGenerateLook}
                     disabled={isGenerateButtonDisabled}
-                    className="w-full max-w-md bg-green-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-700 transition-all duration-300 disabled:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed text-lg shadow-lg"
+                    className="w-full max-w-md bg-green-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-700 transition-all duration-300 disabled:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed text-lg shadow-lg flex items-center justify-center gap-2"
                   >
-                    Generate New Look
+                    {isLoading ? (
+                      <>
+                        <div className="w-6 h-6 border-4 border-dashed rounded-full animate-spin border-white"></div>
+                        <span>Generating...</span>
+                      </>
+                    ) : (
+                      'Generate New Look'
+                    )}
                   </button>
                   {error && (
                     <p className="text-red-400 mt-4 text-center w-full max-w-sm">{error}</p>
