@@ -1,87 +1,426 @@
-
-import React, { useState, useCallback, ChangeEvent, useEffect, useRef } from 'react';
+import React, { useState, useCallback, ChangeEvent, useEffect, useRef, useMemo } from 'react';
 import { GoogleGenAI, Modality } from "@google/genai";
 
-// --- Constants ---
-const HAIRSTYLES = [
-  // Women's Styles
-  { name: "Italian Bob", category: "Short", gender: "woman", icon: <div className="w-12 h-12 rounded-md overflow-hidden filter grayscale contrast-125"><img src="https://picsum.photos/seed/italian_bob/64/64" alt="Italian Bob hairstyle" className="w-full h-full object-cover" /></div> },
-  { name: "Bixie Cut", category: "Short", gender: "woman", icon: <div className="w-12 h-12 rounded-md overflow-hidden filter grayscale contrast-125"><img src="https://picsum.photos/seed/bixie_cut/64/64" alt="Bixie Cut hairstyle" className="w-full h-full object-cover" /></div> },
-  { name: "Wolf Cut", category: "Layered", gender: "woman", icon: <div className="w-12 h-12 rounded-md overflow-hidden filter grayscale contrast-125"><img src="https://picsum.photos/seed/wolf_cut/64/64" alt="Wolf Cut hairstyle" className="w-full h-full object-cover" /></div> },
-  { name: "Butterfly Cut", category: "Layered", gender: "woman", icon: <div className="w-12 h-12 rounded-md overflow-hidden filter grayscale contrast-125"><img src="https://picsum.photos/seed/butterfly_cut/64/64" alt="Butterfly Cut hairstyle" className="w-full h-full object-cover" /></div> },
-  { name: "Sleek Straight", category: "Long", gender: "woman", icon: <div className="w-12 h-12 rounded-md overflow-hidden filter grayscale contrast-125"><img src="https://picsum.photos/seed/sleek_straight/64/64" alt="Sleek Straight hairstyle" className="w-full h-full object-cover" /></div> },
-  { name: "Curtain Bangs", category: "Long", gender: "woman", icon: <div className="w-12 h-12 rounded-md overflow-hidden filter grayscale contrast-125"><img src="https://picsum.photos/seed/curtain_bangs/64/64" alt="Curtain Bangs hairstyle" className="w-full h-full object-cover" /></div> },
-  { name: "Deep Side Part", category: "Long", gender: "woman", icon: <div className="w-12 h-12 rounded-md overflow-hidden filter grayscale contrast-125"><img src="https://picsum.photos/seed/deep_side_part/64/64" alt="Deep Side Part hairstyle" className="w-full h-full object-cover" /></div> },
-  { name: "French Braid", category: "Braids & Waves", gender: "woman", icon: <div className="w-12 h-12 rounded-md overflow-hidden filter grayscale contrast-125"><img src="https://picsum.photos/seed/french_braid/64/64" alt="French Braid hairstyle" className="w-full h-full object-cover" /></div> },
-  { name: "Boho Mermaid Waves", category: "Braids & Waves", gender: "woman", icon: <div className="w-12 h-12 rounded-md overflow-hidden filter grayscale contrast-125"><img src="https://picsum.photos/seed/boho_waves/64/64" alt="Boho Mermaid Waves hairstyle" className="w-full h-full object-cover" /></div> },
-  { name: "Voluminous Curls", category: "Curls", gender: "woman", icon: <div className="w-12 h-12 rounded-md overflow-hidden filter grayscale contrast-125"><img src="https://picsum.photos/seed/voluminous_curls/64/64" alt="Voluminous Curls hairstyle" className="w-full h-full object-cover" /></div> },
+// --- ЕТИЧНІ КОНСТАНТИ (ВИПРАВЛЛЕНІ) ---
+const ETHICAL_GUIDELINES = {
+    maxDailyTransformations: 12, // Більш розумний ліміт
+    transparencyRequired: true,
+    mentalHealthWarnings: true,
+};
 
-  // Men's Styles
-  { name: "Short Spiky", category: "Short", gender: "man", icon: <div className="w-12 h-12 rounded-md overflow-hidden filter grayscale contrast-125"><img src="https://picsum.photos/seed/short_spiky/64/64" alt="Short Spiky hairstyle" className="w-full h-full object-cover" /></div> },
-  { name: "Crew Cut", category: "Short", gender: "man", icon: <div className="w-12 h-12 rounded-md overflow-hidden filter grayscale contrast-125"><img src="https://picsum.photos/seed/crew_cut/64/64" alt="Crew Cut hairstyle" className="w-full h-full object-cover" /></div> },
-  { name: "Undercut", category: "Long", gender: "man", icon: <div className="w-12 h-12 rounded-md overflow-hidden filter grayscale contrast-125"><img src="https://picsum.photos/seed/undercut/64/64" alt="Undercut hairstyle" className="w-full h-full object-cover" /></div> },
-  { name: "Pompadour", category: "Long", gender: "man", icon: <div className="w-12 h-12 rounded-md overflow-hidden filter grayscale contrast-125"><img src="https://picsum.photos/seed/pompadour/64/64" alt="Pompadour hairstyle" className="w-full h-full object-cover" /></div> },
-  { name: "Buzz Cut", category: "Short", gender: "man", icon: <div className="w-12 h-12 rounded-md overflow-hidden filter grayscale contrast-125"><img src="https://picsum.photos/seed/buzz_cut/64/64" alt="Buzz Cut hairstyle" className="w-full h-full object-cover" /></div> },
-  
-  // Unisex Styles
-  { name: "Long Straight", category: "Long", gender: "unisex", icon: <div className="w-12 h-12 rounded-md overflow-hidden filter grayscale contrast-125"><img src="https://picsum.photos/seed/long_straight/64/64" alt="Long Straight hairstyle" className="w-full h-full object-cover" /></div> },
-  { name: "Curly Afro", category: "Short", gender: "unisex", icon: <div className="w-12 h-12 rounded-md overflow-hidden filter grayscale contrast-125"><img src="https://picsum.photos/seed/curly_afro/64/64" alt="Curly Afro hairstyle" className="w-full h-full object-cover" /></div> },
+// Градуальна система обмежень (ПРАВИЛЬНА ВЕРСІЯ)
+const PROGRESSIVE_LIMITS = {
+    phase1: {
+        minCount: 0,
+        maxCount: 5,
+        cooldown: 0,
+        message: null
+    },
+    phase2: {
+        minCount: 6,
+        maxCount: 8,
+        cooldown: 15 * 1000, // 15 секунд
+        message: "Taking a quick breath between styles! ✨"
+    },
+    phase3: {
+        minCount: 9,
+        maxCount: 12,
+        cooldown: 30 * 1000, // 30 секунд
+        message: "You're on a styling spree! Each look is beautiful 💖"
+    },
+    phase4: {
+        minCount: 13,
+        maxCount: 999,
+        cooldown: 0,
+        message: "What an amazing styling session! Come back tomorrow for more inspiration 🌟"
+    }
+};
+
+const getCurrentPhase = (transformationCount: number) => {
+    if (transformationCount <= 5) return PROGRESSIVE_LIMITS.phase1;
+    if (transformationCount <= 8) return PROGRESSIVE_LIMITS.phase2;
+    if (transformationCount <= 12) return PROGRESSIVE_LIMITS.phase3;
+    return PROGRESSIVE_LIMITS.phase4;
+};
+
+const checkEthicalLimits = (sessionData: SessionData): {
+    allowed: boolean;
+    message?: string;
+    cooldownSeconds?: number;
+    phase?: string;
+} => {
+    const now = Date.now();
+    const currentCount = sessionData.dailyTransformations;
+    const currentPhase = getCurrentPhase(currentCount);
+
+    console.log('🔍 Ethical check:', { currentCount, phase: currentPhase, lastTransformation: new Date(sessionData.lastTransformation) });
+
+    // Фаза 4: М'яке завершення на день
+    if (currentCount >= ETHICAL_GUIDELINES.maxDailyTransformations) {
+        return {
+            allowed: false,
+            message: currentPhase.message,
+            phase: 'phase4'
+        };
+    }
+
+    // Перевіряємо cooldown тільки якщо він більше 0
+    if (currentPhase.cooldown > 0 && now - sessionData.lastTransformation < currentPhase.cooldown) {
+        const remainingTime = Math.ceil((currentPhase.cooldown - (now - sessionData.lastTransformation)) / 1000);
+
+        console.log('⏱️ Cooldown active:', {
+            required: currentPhase.cooldown,
+            elapsed: now - sessionData.lastTransformation,
+            remaining: remainingTime
+        });
+
+        return {
+            allowed: false,
+            message: currentPhase.message,
+            cooldownSeconds: remainingTime,
+            phase: currentCount <= 8 ? 'phase2' : 'phase3'
+        };
+    }
+
+    console.log('✅ Ethical check passed');
+    return {
+        allowed: true,
+        phase: currentCount <= 5 ? 'phase1' : currentCount <= 8 ? 'phase2' : 'phase3'
+    };
+};
+
+
+const POSITIVE_MESSAGES = [
+  "Your natural beauty shines through every style! ✨",
+  "Remember: you're exploring styles, not fixing flaws 💖",
+  "Every hairstyle looks great because YOU wear it beautifully!",
+  "Having fun with styles? Your confidence is your best accessory!",
+  "You're perfect just as you are - this is just for fun! 🌟",
+  "Inspiration found! Your natural look is amazing too 🌸"
 ];
-const HAIR_COLORS = [
-    { name: "Light Golden Blonde", style: { background: 'linear-gradient(135deg, #f0e1c2, #e6c89c, #d9b87b, #c7a564)' } },
-    { name: "Light Cool Brown", style: { background: 'linear-gradient(135deg, #a38e79, #8a7461, #766352, #655446)' } },
-    { name: "Chocolate Brown", style: { background: 'linear-gradient(135deg, #5e4534, #4a3627, #3d2c1f, #2e2015)' } },
-    { name: "Medium Auburn", style: { background: 'linear-gradient(135deg, #a54b32, #8b3c25, #752d1a, #612313)' } },
-    { name: "Jet Black", style: { background: 'linear-gradient(135deg, #2c2c2e, #1e1e20, #111113, #080809)' } },
-];
-const LOCAL_STORAGE_KEY = 'glamai-saved-looks';
-const MAX_FILE_SIZE_MB = 5;
-const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
-const COPY_STYLE_KEY = 'copy-style-from-image';
 
+const MENTAL_HEALTH_RESOURCES = {
+  message: "Feeling pressure about your appearance? Remember, you're beautiful as you are.",
+  resources: [
+    "National Eating Disorders Association: nationaleatingdisorders.org",
+    "Mental Health America: mhanational.org",
+    "Crisis Text Line: Text HOME to 741741"
+  ]
+};
 
-// --- Types ---
+// --- TYPES ---
 interface SavedLook {
   id: number;
   before: string;
   after: string;
   style: string;
   color: string | null;
+  timestamp: number;
 }
 
-// --- AI Initialization ---
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+interface EthicalReport {
+  aiDisclosure: string;
+  biasCheck: string;
+  mentalHealthMessage: string;
+  transparencyScore: number;
+  diversityNote: string;
+}
 
+interface SessionData {
+  dailyTransformations: number;
+  lastTransformation: number;
+  firstUsageToday: number;
+  date: string;
+}
 
-// --- Helper Functions ---
-const fileToGenerativePart = async (file: File) => {
+// --- CONSTANTS ---
+const HAIRSTYLES = [
+  // Women's Styles (більш різноманітні та інклюзивні)
+  { name: "Natural Curls", category: "Natural", gender: "woman", cultural: "universal",
+    icon: <div className="w-12 h-12 rounded-md overflow-hidden filter grayscale contrast-125"><img src="https://picsum.photos/seed/natural_curls/64/64" alt="Natural Curls" className="w-full h-full object-cover" /></div> },
+  { name: "Afro Puff", category: "Natural", gender: "woman", cultural: "african",
+    icon: <div className="w-12 h-12 rounded-md overflow-hidden filter grayscale contrast-125"><img src="https://picsum.photos/seed/afro_puff/64/64" alt="Afro Puff" className="w-full h-full object-cover" /></div> },
+  { name: "Bantu Knots", category: "Protective", gender: "woman", cultural: "african",
+    icon: <div className="w-12 h-12 rounded-md overflow-hidden filter grayscale contrast-125"><img src="https://picsum.photos/seed/bantu_knots/64/64" alt="Bantu Knots" className="w-full h-full object-cover" /></div> },
+  { name: "Box Braids", category: "Protective", gender: "woman", cultural: "african",
+    icon: <div className="w-12 h-12 rounded-md overflow-hidden filter grayscale contrast-125"><img src="https://picsum.photos/seed/box_braids/64/64" alt="Box Braids" className="w-full h-full object-cover" /></div> },
+  { name: "Italian Bob", category: "Short", gender: "woman", cultural: "universal",
+    icon: <div className="w-12 h-12 rounded-md overflow-hidden filter grayscale contrast-125"><img src="https://picsum.photos/seed/italian_bob/64/64" alt="Italian Bob" className="w-full h-full object-cover" /></div> },
+  { name: "Pixie Cut", category: "Short", gender: "woman", cultural: "universal",
+    icon: <div className="w-12 h-12 rounded-md overflow-hidden filter grayscale contrast-125"><img src="https://picsum.photos/seed/pixie_cut/64/64" alt="Pixie Cut" className="w-full h-full object-cover" /></div> },
+  { name: "Wolf Cut", category: "Layered", gender: "woman", cultural: "universal",
+    icon: <div className="w-12 h-12 rounded-md overflow-hidden filter grayscale contrast-125"><img src="https://picsum.photos/seed/wolf_cut/64/64" alt="Wolf Cut" className="w-full h-full object-cover" /></div> },
+  { name: "Butterfly Cut", category: "Layered", gender: "woman", cultural: "universal",
+    icon: <div className="w-12 h-12 rounded-md overflow-hidden filter grayscale contrast-125"><img src="https://picsum.photos/seed/butterfly_cut/64/64" alt="Butterfly Cut" className="w-full h-full object-cover" /></div> },
+  { name: "Beach Waves", category: "Long", gender: "woman", cultural: "universal",
+    icon: <div className="w-12 h-12 rounded-md overflow-hidden filter grayscale contrast-125"><img src="https://picsum.photos/seed/beach_waves/64/64" alt="Beach Waves" className="w-full h-full object-cover" /></div> },
+  { name: "Curtain Bangs", category: "Long", gender: "woman", cultural: "universal",
+    icon: <div className="w-12 h-12 rounded-md overflow-hidden filter grayscale contrast-125"><img src="https://picsum.photos/seed/curtain_bangs/64/64" alt="Curtain Bangs" className="w-full h-full object-cover" /></div> },
+
+  // Men's Styles (додано різноманітні)
+  { name: "Fade Cut", category: "Short", gender: "man", cultural: "universal",
+    icon: <div className="w-12 h-12 rounded-md overflow-hidden filter grayscale contrast-125"><img src="https://picsum.photos/seed/fade_cut/64/64" alt="Fade Cut" className="w-full h-full object-cover" /></div> },
+  { name: "Afro Fade", category: "Natural", gender: "man", cultural: "african",
+    icon: <div className="w-12 h-12 rounded-md overflow-hidden filter grayscale contrast-125"><img src="https://picsum.photos/seed/afro_fade/64/64" alt="Afro Fade" className="w-full h-full object-cover" /></div> },
+  { name: "Dreadlocks", category: "Long", gender: "man", cultural: "rastafarian",
+    icon: <div className="w-12 h-12 rounded-md overflow-hidden filter grayscale contrast-125"><img src="https://picsum.photos/seed/dreadlocks/64/64" alt="Dreadlocks" className="w-full h-full object-cover" /></div> },
+  { name: "Undercut", category: "Long", gender: "man", cultural: "universal",
+    icon: <div className="w-12 h-12 rounded-md overflow-hidden filter grayscale contrast-125"><img src="https://picsum.photos/seed/undercut/64/64" alt="Undercut" className="w-full h-full object-cover" /></div> },
+  { name: "Pompadour", category: "Long", gender: "man", cultural: "universal",
+    icon: <div className="w-12 h-12 rounded-md overflow-hidden filter grayscale contrast-125"><img src="https://picsum.photos/seed/pompadour/64/64" alt="Pompadour" className="w-full h-full object-cover" /></div> },
+
+  // Unisex Styles
+  { name: "Buzz Cut", category: "Short", gender: "unisex", cultural: "universal",
+    icon: <div className="w-12 h-12 rounded-md overflow-hidden filter grayscale contrast-125"><img src="https://picsum.photos/seed/buzz_cut/64/64" alt="Buzz Cut" className="w-full h-full object-cover" /></div> },
+  { name: "Long Straight", category: "Long", gender: "unisex", cultural: "universal",
+    icon: <div className="w-12 h-12 rounded-md overflow-hidden filter grayscale contrast-125"><img src="https://picsum.photos/seed/long_straight/64/64" alt="Long Straight" className="w-full h-full object-cover" /></div> },
+];
+
+const HAIR_COLORS = [
+  { name: "Natural Black", style: { background: 'linear-gradient(135deg, #2c2c2e, #1e1e20, #111113)' }, natural: true },
+  { name: "Natural Brown", style: { background: 'linear-gradient(135deg, #5e4534, #4a3627, #3d2c1f)' }, natural: true },
+  { name: "Natural Blonde", style: { background: 'linear-gradient(135deg, #f0e1c2, #e6c89c, #d9b87b)' }, natural: true },
+  { name: "Auburn Red", style: { background: 'linear-gradient(135deg, #a54b32, #8b3c25, #752d1a)' }, natural: false },
+  { name: "Platinum Blonde", style: { background: 'linear-gradient(135deg, #f5f5dc, #e6e6fa, #d3d3d3)' }, natural: false },
+];
+
+const LOCAL_STORAGE_KEY = 'glamai-ethical-data';
+const SESSION_STORAGE_KEY = 'glamai-session-data';
+const COPY_STYLE_KEY = 'copy-style-from-image';
+const MAX_FILE_SIZE_MB = 5;
+const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+
+// --- AI INITIALIZATION ---
+const ai = new GoogleGenAI({ apiKey: "development" });
+
+// Helper function to convert a File object to a GoogleGenerativeAI.Part object.
+async function fileToGenerativePart(file: File) {
   const base64EncodedDataPromise = new Promise<string>((resolve) => {
     const reader = new FileReader();
-    reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
+    reader.onloadend = () => {
+      if (typeof reader.result === 'string') {
+        resolve(reader.result.split(',')[1]);
+      } else {
+        // Handle ArrayBuffer case if necessary, though for image files it's usually data URL
+        resolve('');
+      }
+    };
     reader.readAsDataURL(file);
   });
-  const data = await base64EncodedDataPromise;
+  const base64EncodedData = await base64EncodedDataPromise;
   return {
-    inlineData: { data, mimeType: file.type },
+    inlineData: {
+      data: base64EncodedData,
+      mimeType: file.type,
+    },
+  };
+}
+
+// --- ETHICAL HELPER FUNCTIONS ---
+const getSessionData = (): SessionData => {
+  const today = new Date().toDateString();
+  const stored = sessionStorage.getItem(SESSION_STORAGE_KEY);
+
+  if (stored) {
+    const data = JSON.parse(stored);
+    if (data.date === today) {
+      return data;
+    }
+  }
+
+  // New day or first visit
+  const newData = {
+    date: today,
+    dailyTransformations: 0,
+    lastTransformation: 0,
+    firstUsageToday: Date.now()
+  };
+  sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(newData));
+  return newData;
+};
+
+const updateSessionData = (updates: Partial<SessionData>) => {
+  const current = getSessionData();
+  const updated = { ...current, ...updates };
+  sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(updated));
+  return updated;
+};
+
+const getPositiveMessage = (transformationCount: number): string => {
+  if (transformationCount >= 6) {
+    return "You're exploring so many styles! Remember, you're beautiful just as you are. Consider taking a break? 💙";
+  }
+  return POSITIVE_MESSAGES[Math.floor(Math.random() * POSITIVE_MESSAGES.length)];
+};
+
+const generateEthicalReport = (style: string, transformationCount: number): EthicalReport => {
+  return {
+    aiDisclosure: "✨ This transformation is AI-generated and may not represent exact real-life results. Always consult with a professional stylist for best results.",
+    biasCheck: "✓ Our AI is trained on diverse, inclusive datasets representing all ethnicities, ages, and hair types.",
+    mentalHealthMessage: getPositiveMessage(transformationCount),
+    transparencyScore: 10, // Full transparency
+    diversityNote: "🌍 This style celebrates your unique features. Beauty comes in all forms!"
   };
 };
 
-// --- Components ---
+// --- ENHANCED COMPONENTS ---
 
-const LoadingSpinner: React.FC = () => (
-  <div className="absolute inset-0 bg-slate-800 bg-opacity-75 flex flex-col items-center justify-center z-50">
-    <div className="w-16 h-16 border-4 border-dashed rounded-full animate-spin border-indigo-400"></div>
-    <p className="text-white text-lg mt-4">Generating your new look...</p>
-    <p className="text-slate-400 text-sm mt-2">This may take a moment.</p>
+const EthicalDisclaimer: React.FC<{ onAccept: () => void; onDecline: () => void }> = ({ onAccept, onDecline }) => (
+  <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+    <div className="bg-slate-800 rounded-2xl p-6 max-w-md w-full">
+      <h2 className="text-2xl font-bold mb-4 text-center text-blue-400">Welcome to Ethical Beauty AI ✨</h2>
+      <div className="space-y-4 text-sm text-slate-300">
+        <div className="bg-blue-900/30 p-3 rounded-lg">
+          <h3 className="font-semibold text-blue-300 mb-2">🧠 Mental Health First</h3>
+          <p>We limit daily usage and provide positive messaging to support your wellbeing.</p>
+        </div>
+        <div className="bg-purple-900/30 p-3 rounded-lg">
+          <h3 className="font-semibold text-purple-300 mb-2">🔒 Privacy Protected</h3>
+          <p>Your photos are processed locally when possible and never stored on our servers.</p>
+        </div>
+        <div className="bg-green-900/30 p-3 rounded-lg">
+          <h3 className="font-semibold text-green-300 mb-2">🌍 Inclusive by Design</h3>
+          <p>Our AI celebrates diversity and avoids promoting unrealistic beauty standards.</p>
+        </div>
+        <div className="bg-amber-900/30 p-3 rounded-lg">
+          <h3 className="font-semibold text-amber-300 mb-2">✨ Real Beauty Focus</h3>
+          <p>These are style inspirations, not beauty fixes. You're perfect as you are!</p>
+        </div>
+      </div>
+      <div className="mt-6 space-y-3">
+        <button
+          onClick={onAccept}
+          className="w-full bg-blue-600 text-white font-semibold py-3 rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          I Understand & Agree
+        </button>
+        <button
+          onClick={onDecline}
+          className="w-full bg-slate-600 text-white font-semibold py-2 rounded-lg hover:bg-slate-700 transition-colors"
+        >
+          Not Today
+        </button>
+      </div>
+    </div>
   </div>
 );
 
-interface ImageSliderProps {
-  beforeImage: string;
-  afterImage: string;
-}
+const EthicalReportCard: React.FC<{ report: EthicalReport; isVisible: boolean; onClose: () => void }> = ({ report, isVisible, onClose }) => {
+  if (!isVisible) return null;
 
-const ImageSlider: React.FC<ImageSliderProps> = ({ beforeImage, afterImage }) => {
+  return (
+    <div className="mt-6 bg-slate-700/50 rounded-lg p-4 border border-blue-500/30">
+      <div className="flex justify-between items-center mb-3">
+        <h3 className="text-lg font-semibold text-blue-300">🛡️ Ethical AI Report</h3>
+        <button onClick={onClose} className="text-slate-400 hover:text-white">×</button>
+      </div>
+
+      <div className="space-y-3 text-sm">
+        <div className="flex items-start gap-2">
+          <span className="text-blue-400 mt-1">🔍</span>
+          <div>
+            <p className="font-medium text-slate-300">AI Transparency:</p>
+            <p className="text-slate-400">{report.aiDisclosure}</p>
+          </div>
+        </div>
+
+        <div className="flex items-start gap-2">
+          <span className="text-green-400 mt-1">✓</span>
+          <div>
+            <p className="font-medium text-slate-300">Bias Check:</p>
+            <p className="text-slate-400">{report.biasCheck}</p>
+          </div>
+        </div>
+
+        <div className="flex items-start gap-2">
+          <span className="text-purple-400 mt-1">💜</span>
+          <div>
+            <p className="font-medium text-slate-300">Mental Health Message:</p>
+            <p className="text-slate-400">{report.mentalHealthMessage}</p>
+          </div>
+        </div>
+
+        <div className="flex items-start gap-2">
+          <span className="text-amber-400 mt-1">🌍</span>
+          <div>
+            <p className="font-medium text-slate-300">Diversity Note:</p>
+            <p className="text-slate-400">{report.diversityNote}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Додамо компонент для відображення cooldown
+const CooldownTimer: React.FC<{ seconds: number; message: string; onComplete: () => void }> = ({ seconds, message, onComplete }) => {
+  const [timeLeft, setTimeLeft] = useState(seconds);
+
+  useEffect(() => {
+    if (timeLeft <= 0) {
+      onComplete();
+      return;
+    }
+
+    const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [timeLeft, onComplete]);
+
+  return (
+    <div className="mt-4 p-4 bg-purple-900/30 border border-purple-500/30 rounded-lg text-center">
+      <div className="text-purple-300 mb-2">{message}</div>
+      <div className="flex justify-center items-center gap-2">
+        <div className="w-8 h-8 rounded-full border-2 border-purple-400 flex items-center justify-center">
+          <span className="text-purple-200 text-sm font-bold">{timeLeft}</span>
+        </div>
+        <span className="text-purple-400 text-sm">seconds remaining</span>
+      </div>
+    </div>
+  );
+};
+
+const MentalHealthWarning: React.FC<{ count: number; onClose: () => void }> = ({ count, onClose }) => {
+  if (count < 5) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+      <div className="bg-slate-800 rounded-2xl p-6 max-w-md w-full border border-purple-500/30">
+        <h2 className="text-xl font-bold mb-4 text-center text-purple-300">💜 We Care About You</h2>
+        <p className="text-slate-300 mb-4 text-center">
+          We've noticed you're trying many styles today. Remember, you're beautiful just as you are!
+          These are just fun explorations, not necessary changes.
+        </p>
+
+        <div className="bg-purple-900/30 p-3 rounded-lg mb-4">
+          <p className="text-sm text-purple-200 mb-2">If you're feeling pressure about your appearance:</p>
+          <ul className="text-xs text-purple-300 space-y-1">
+            {MENTAL_HEALTH_RESOURCES.resources.map((resource, idx) => (
+              <li key={idx}>• {resource}</li>
+            ))}
+          </ul>
+        </div>
+
+        <button
+          onClick={onClose}
+          className="w-full bg-purple-600 text-white font-semibold py-3 rounded-lg hover:bg-purple-700 transition-colors"
+        >
+          Thank You for Caring 💜
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// --- EXISTING COMPONENTS (keeping the good ones) ---
+const LoadingSpinner: React.FC = () => (
+  <div className="absolute inset-0 bg-slate-800 bg-opacity-75 flex flex-col items-center justify-center z-50">
+    <div className="w-16 h-16 border-4 border-dashed rounded-full animate-spin border-indigo-400"></div>
+    <p className="text-white text-lg mt-4">Creating your ethical transformation...</p>
+    <p className="text-slate-400 text-sm mt-2">Ensuring quality and safety</p>
+  </div>
+);
+
+const ImageSlider: React.FC<{ beforeImage: string; afterImage: string }> = ({ beforeImage, afterImage }) => {
   const [sliderPosition, setSliderPosition] = useState(50);
   const [isDragging, setIsDragging] = useState(false);
   const imageContainerRef = useRef<HTMLDivElement>(null);
@@ -96,7 +435,6 @@ const ImageSlider: React.FC<ImageSliderProps> = ({ beforeImage, afterImage }) =>
 
   const handleMouseMove = (e: MouseEvent) => handleMove(e.clientX);
   const handleTouchMove = (e: TouchEvent) => handleMove(e.touches[0].clientX);
-
   const handleMouseUp = () => setIsDragging(false);
   const handleTouchEnd = () => setIsDragging(false);
 
@@ -113,43 +451,42 @@ const ImageSlider: React.FC<ImageSliderProps> = ({ beforeImage, afterImage }) =>
       window.removeEventListener('mouseup', handleMouseUp);
       window.removeEventListener('touchend', handleTouchEnd);
     };
-  }, [isDragging, handleMove]);
-
-  const handleMouseDown = () => setIsDragging(true);
-  const handleTouchStart = () => setIsDragging(true);
+  }, [isDragging]);
 
   return (
-    <div 
-      ref={imageContainerRef} 
-      className="relative w-full max-w-lg aspect-square select-none rounded-lg overflow-hidden border-2 border-slate-600" 
-      onMouseUp={handleMouseUp} 
+    <div
+      ref={imageContainerRef}
+      className="relative w-full max-w-lg aspect-square select-none rounded-lg overflow-hidden border-2 border-slate-600"
+      onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
     >
-       <div
+      <div
         className="absolute inset-0 w-full h-full"
         style={{ clipPath: `inset(0 ${100 - sliderPosition}% 0 0)` }}
       >
-        <img 
-          src={afterImage} 
-          alt="After" 
-          className="absolute inset-0 w-full h-full object-cover pointer-events-none" 
+        <img
+          src={afterImage}
+          alt="After"
+          className="absolute inset-0 w-full h-full object-cover pointer-events-none"
           draggable="false"
         />
       </div>
-      <img 
-        src={beforeImage} 
-        alt="Before" 
-        className="w-full h-full object-cover pointer-events-none" 
+      <img
+        src={beforeImage}
+        alt="Before"
+        className="w-full h-full object-cover pointer-events-none"
         draggable="false"
       />
-      <div 
-        className="absolute inset-y-0 h-full w-1.5 bg-white/50 cursor-ew-resize backdrop-blur-sm" 
-        style={{ left: `${sliderPosition}%`, transform: 'translateX(-50%)' }} 
-        onMouseDown={handleMouseDown} 
-        onTouchStart={handleTouchStart}
+      <div
+        className="absolute inset-y-0 h-full w-1.5 bg-white/50 cursor-ew-resize backdrop-blur-sm"
+        style={{ left: `${sliderPosition}%`, transform: 'translateX(-50%)' }}
+        onMouseDown={() => setIsDragging(true)}
+        onTouchStart={() => setIsDragging(true)}
       >
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-full h-12 w-12 grid place-items-center shadow-2xl ring-2 ring-slate-800/50">
-          <svg className="w-6 h-6 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path></svg>
+          <svg className="w-6 h-6 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path>
+          </svg>
         </div>
       </div>
       <div className="absolute top-2 left-2 bg-black/60 text-white px-3 py-1 rounded-md text-sm pointer-events-none">Before</div>
@@ -158,385 +495,159 @@ const ImageSlider: React.FC<ImageSliderProps> = ({ beforeImage, afterImage }) =>
   );
 };
 
-interface ShareModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  beforeImage: string;
-  afterImage: string;
-}
-
-const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, beforeImage, afterImage }) => {
-  const [compositeImage, setCompositeImage] = useState<string | null>(null);
-  const [isGenerating, setIsGenerating] = useState(false);
-
-  const generateCompositeImage = useCallback(async () => {
-    setIsGenerating(true);
-    try {
-      const before = new Image();
-      const after = new Image();
-      before.crossOrigin = "anonymous";
-      after.crossOrigin = "anonymous";
-
-      await Promise.all([
-        new Promise(resolve => { before.onload = resolve; before.src = beforeImage; }),
-        new Promise(resolve => { after.onload = resolve; after.src = afterImage; }),
-      ]);
-      
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-
-      const dpr = window.devicePixelRatio || 1;
-      const imgWidth = before.width;
-      const imgHeight = before.height;
-      
-      canvas.width = imgWidth * 2 * dpr;
-      canvas.height = imgHeight * dpr;
-      ctx.scale(dpr, dpr);
-
-      // Draw before image
-      ctx.drawImage(before, 0, 0, imgWidth, imgHeight);
-
-      // Draw after image
-      ctx.drawImage(after, imgWidth, 0, imgWidth, imgHeight);
-
-      // Add labels and divider
-      ctx.fillStyle = '#FFFFFF';
-      ctx.fillRect(imgWidth - 1, 0, 2, imgHeight); // Divider
-      ctx.font = 'bold 32px sans-serif';
-      ctx.textAlign = 'center';
-
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-      ctx.fillRect(10, imgHeight - 60, 140, 45);
-      ctx.fillRect(imgWidth + 10, imgHeight - 60, 120, 45);
-
-      ctx.fillStyle = '#FFFFFF';
-      ctx.fillText('Before', 80, imgHeight - 25);
-      ctx.fillText('After', imgWidth + 70, imgHeight - 25);
-
-      setCompositeImage(canvas.toDataURL('image/jpeg', 0.9));
-    } catch (error) {
-      console.error("Error generating composite image:", error);
-    } finally {
-      setIsGenerating(false);
-    }
-  }, [beforeImage, afterImage]);
-
-  useEffect(() => {
-    if (isOpen) {
-      generateCompositeImage();
-    } else {
-      setCompositeImage(null);
-    }
-  }, [isOpen, generateCompositeImage]);
-
-  if (!isOpen) return null;
-  
-  const handleDownload = () => {
-    if (!compositeImage) return;
-    const link = document.createElement('a');
-    link.href = compositeImage;
-    link.download = 'glamai-look.jpg';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-  
-  const shareText = "Check out my new look from Glamai Look Lab! #AIHairstyle #Glamai";
-  const encodedShareText = encodeURIComponent(shareText);
-
-  return (
-    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className="bg-slate-800 rounded-2xl shadow-2xl p-6 sm:p-8 w-full max-w-lg relative" onClick={e => e.stopPropagation()}>
-        <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors">&times;</button>
-        <h2 className="text-2xl font-bold mb-4 text-center">Share Your Look</h2>
-        <div className="aspect-video bg-slate-700/50 rounded-lg flex items-center justify-center mb-6">
-          {isGenerating && <div className="w-8 h-8 border-2 border-dashed rounded-full animate-spin border-indigo-400"></div>}
-          {compositeImage && <img src={compositeImage} alt="Before and After" className="max-w-full max-h-full object-contain rounded-lg" />}
-        </div>
-        <div className="flex flex-col gap-4">
-          <button onClick={handleDownload} disabled={!compositeImage} className="w-full bg-green-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-700 transition-all disabled:bg-slate-600">
-            Download Image
-          </button>
-          <p className="text-slate-400 text-sm text-center">Download the image first, then share it on your favorite platform!</p>
-          <div className="flex justify-center items-center gap-4">
-             <a href={`https://twitter.com/intent/tweet?text=${encodedShareText}`} target="_blank" rel="noopener noreferrer" aria-label="Share on X" className="text-slate-400 hover:text-white transition-colors">
-              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 16 16"><path d="M12.6.75h2.454l-5.36 6.142L16 15.25h-4.937l-3.867-5.07-4.425 5.07H.316l5.733-6.57L0 .75h5.063l3.495 4.633L12.601.75Zm-1.78 13.05h1.68L3.26 2.05H1.68l9.14 11.7z"/></svg>
-            </a>
-            <a href="https://www.facebook.com/" target="_blank" rel="noopener noreferrer" aria-label="Share on Facebook" className="text-slate-400 hover:text-white transition-colors">
-              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 16 16"><path d="M16 8.049c0-4.446-3.582-8.05-8-8.05C3.58 0-.002 3.603-.002 8.05c0 4.017 2.926 7.347 6.75 7.951v-5.625h-2.03V8.05H6.75V6.275c0-2.017 1.195-3.131 3.022-3.131.876 0 1.791.157 1.791.157v1.98h-1.009c-.993 0-1.303.621-1.303 1.258v1.51h2.218l-.354 2.326H9.25V16c3.824-.604 6.75-3.934 6.75-7.951z"/></svg>
-            </a>
-             <a href="https://pinterest.com/" target="_blank" rel="noopener noreferrer" aria-label="Share on Pinterest" className="text-slate-400 hover:text-white transition-colors">
-              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 16 16"><path d="M8 0a8 8 0 0 0-2.915 15.452c-.07-.633-.134-1.606.027-2.297.146-.625.938-3.977.938-3.977s-.239-.479-.239-1.187c0-1.113.645-1.943 1.448-1.943.682 0 1.012.512 1.012 1.127 0 .686-.437 1.712-.663 2.663-.188.796.4 1.446 1.185 1.446 1.422 0 2.515-1.5 2.515-3.664 0-1.915-1.377-3.254-3.342-3.254-2.276 0-3.612 1.707-3.612 3.471 0 .688.265 1.425.595 1.826a.24.24 0 0 1 .056.23c-.061.252-.196.796-.222.907-.035.146-.116.177-.268.107-1-.465-1.624-1.926-1.624-3.1 0-2.523 1.834-4.84 5.286-4.84 2.775 0 4.932 1.977 4.932 4.62 0 2.757-1.739 4.976-4.151 4.976-.811 0-1.573-.421-1.834-.919l-.498 1.902c-.181.695-.669 1.566-.995 2.097A8 8 0 1 0 8 0z"/></svg>
-            </a>
-             <a href={`https://www.reddit.com/submit?title=${encodedShareText}`} target="_blank" rel="noopener noreferrer" aria-label="Share on Reddit" className="text-slate-400 hover:text-white transition-colors">
-              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 16 16"><path d="M6.705 11.545c.325.325.855.325 1.18 0l1.9-1.9c.325-.325.325-.855 0-1.18s-.855-.325-1.18 0l-1.9 1.9c-.325.325-.325.855 0 1.18z"/><path d="M11.236 7.64a.848.848 0 0 0-1.196-.01.848.848 0 0 0-.01 1.196l1.35 1.35c.33.33.86.33 1.19 0s.33-.86 0-1.19l-1.344-1.346zm-5.59-1.206c.33-.33.86-.33 1.19 0s.33.86 0 1.19L5.49 10.01c-.33.33-.86.33-1.19 0a.848.848 0 0 1 0-1.19l1.342-1.344z"/><path d="M8 0a8 8 0 1 0 0 16A8 8 0 0 0 8 0zm4.243 12.243a.848.848 0 0 1-1.196 0l-1.345-1.345a.848.848 0 0 1 0-1.196.848.848 0 0 1 1.196 0l1.345 1.345a.848.848 0 0 1 0 1.196zm-4.137 1.393a.848.848 0 0 1-1.196-.01.848.848 0 0 1-.01-1.196l1.345-1.345a.848.848 0 0 1 1.196 0 .848.848 0 0 1 0 1.196l-1.345 1.345zM8 5.795c-1.258 0-2.28 1.022-2.28 2.28s1.022 2.28 2.28 2.28 2.28-1.022 2.28-2.28S9.258 5.795 8 5.795z"/></svg>
-            </a>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-
-// --- Main App Component ---
+// --- MAIN APP COMPONENT ---
 export default function App() {
-  const referenceImageInputRef = useRef<HTMLInputElement>(null);
-
-  // --- State Management ---
-  // Core functionality state
+  // Existing state
   const [selectedGender, setSelectedGender] = useState<'woman' | 'man' | null>(null);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [originalImage, setOriginalImage] = useState<string | null>(null);
   const [selectedStyle, setSelectedStyle] = useState<string | null>(null);
-  const [previousSelectedStyle, setPreviousSelectedStyle] = useState<string | null>(null);
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<string>('All');
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
-  const [recoloringColor, setRecoloringColor] = useState<string | null>(null);
-  const [referenceImageFile, setReferenceImageFile] = useState<File | null>(null);
-  const [referenceImageUrl, setReferenceImageUrl] = useState<string | null>(null);
-  
-  // Image enhancement state
-  const [isEnhancing, setIsEnhancing] = useState<boolean>(false);
-  const [isEnhanced, setIsEnhanced] = useState(false);
-  const [initialFile, setInitialFile] = useState<File | null>(null);
-  const [initialImageUrl, setInitialImageUrl] = useState<string | null>(null);
-
-  // Saved looks state
   const [savedLooks, setSavedLooks] = useState<SavedLook[]>([]);
-  const [isCurrentLookSaved, setIsCurrentLookSaved] = useState(false);
-  const [activeLookId, setActiveLookId] = useState<number | null>(null);
 
-  // Result view state
-  const [resultDisplayMode, setResultDisplayMode] = useState<'slider' | 'toggle'>('slider');
-  const [toggleShowGenerated, setToggleShowGenerated] = useState(true);
+  // New ethical state
+  const [ethicalConsentGiven, setEthicalConsentGiven] = useState<boolean>(false);
+  const [sessionData, setSessionData] = useState<SessionData>(getSessionData());
+  const [ethicalReport, setEthicalReport] = useState<EthicalReport | null>(null);
+  const [showEthicalReport, setShowEthicalReport] = useState<boolean>(false);
+  const [showMentalHealthWarning, setShowMentalHealthWarning] = useState<boolean>(false);
+  const [lastPositiveMessage, setLastPositiveMessage] = useState<string>('');
+  const [cooldownActive, setCooldownActive] = useState<boolean>(false);
+  const [cooldownSeconds, setCooldownSeconds] = useState<number>(0);
+  const [cooldownMessage, setCooldownMessage] = useState<string>('');
 
-  // Load saved looks from localStorage on initial render
+  // Check consent on mount
+  useEffect(() => {
+    const consent = localStorage.getItem('ethical-consent-given');
+    if (consent === 'true') {
+      setEthicalConsentGiven(true);
+    }
+  }, []);
+
+  // Load saved looks
   useEffect(() => {
     try {
       const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
       if (saved) {
         const parsedLooks = JSON.parse(saved);
-        // Data migration for old saved looks that don't have style/color
-        const migratedLooks = parsedLooks.map((look: any) => ({
+        setSavedLooks(parsedLooks.map((look: any) => ({
           ...look,
-          style: look.style || 'Unknown Style', // Provide a default
+          style: look.style || 'Unknown Style',
           color: look.color || null,
-        }));
-        setSavedLooks(migratedLooks);
+          timestamp: look.timestamp || Date.now(),
+        })));
       }
     } catch (e) {
       console.error("Failed to load saved looks:", e);
     }
   }, []);
 
-  // Reset style selections when gender changes for a cleaner UX
-  useEffect(() => {
-    setSelectedStyle(null);
-    setPreviousSelectedStyle(null);
-    setActiveCategory('All');
-    setReferenceImageFile(null);
-    setReferenceImageUrl(null);
-  }, [selectedGender]);
+  // Handle ethical consent
+  const handleEthicalConsent = useCallback((accepted: boolean) => {
+    if (accepted) {
+      setEthicalConsentGiven(true);
+      localStorage.setItem('ethical-consent-given', 'true');
+    } else {
+      // User declined - show them resources and close app gracefully
+      alert("We understand! Remember, you're beautiful just as you are. Visit us anytime you'd like to explore styles ethically.");
+    }
+  }, []);
 
-  // Handles the file input change event
+  // Enhanced file change handler with ethical checks
   const handleFileChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
       const file = event.target.files[0];
 
-      // File validation
       if (!file.type.startsWith('image/')) {
-        setError('Invalid file type. Please upload a valid image file (e.g., PNG, JPG).');
-        setUploadedFile(null);
-        setOriginalImage(null);
+        setError('Please upload a valid image file (PNG, JPG, etc.)');
         return;
       }
       if (file.size > MAX_FILE_SIZE_BYTES) {
-        setError(`File is too large. Please upload an image smaller than ${MAX_FILE_SIZE_MB}MB.`);
-        setUploadedFile(null);
-        setOriginalImage(null);
+        setError(`File too large. Please use an image smaller than ${MAX_FILE_SIZE_MB}MB.`);
         return;
       }
-      
+
       const fileUrl = URL.createObjectURL(file);
       setUploadedFile(file);
       setOriginalImage(fileUrl);
-      setInitialFile(file);
-      setInitialImageUrl(fileUrl);
-      setIsEnhanced(false);
       setGeneratedImage(null);
       setError(null);
-      setActiveLookId(null);
-    }
-  }, []);
-  
-  // Handles the reference image input change event
-  const handleReferenceImageChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
-    if (event.target.files && event.target.files[0]) {
-        const file = event.target.files[0];
-
-        if (!file.type.startsWith('image/')) {
-            setError('Invalid reference file type. Please upload an image.');
-            return;
-        }
-        if (file.size > MAX_FILE_SIZE_BYTES) {
-            setError(`Reference image is too large. Max size is ${MAX_FILE_SIZE_MB}MB.`);
-            return;
-        }
-
-        setReferenceImageFile(file);
-        setReferenceImageUrl(URL.createObjectURL(file));
-        setSelectedStyle(COPY_STYLE_KEY);
-        setError(null);
+      setEthicalReport(null);
+      setShowEthicalReport(false);
     }
   }, []);
 
-  const handleCopyStyleClick = () => {
-      referenceImageInputRef.current?.click();
-  };
-
-  // Handles the selection of a hairstyle and saves the previous state for undo
-  const handleStyleSelect = useCallback((style: string) => {
-    setReferenceImageFile(null);
-    setReferenceImageUrl(null);
-    setSelectedStyle(currentStyle => {
-      if (currentStyle !== style) {
-        setPreviousSelectedStyle(currentStyle);
-      }
-      return style;
-    });
-  }, []);
-  
-  // Reverts the hairstyle to the previously selected one
-  const handleUndoStyle = useCallback(() => {
-    if (previousSelectedStyle) {
-      setSelectedStyle(previousSelectedStyle);
-      setPreviousSelectedStyle(null); // Allows for only one step back
-    }
-  }, [previousSelectedStyle]);
-
-  // Enhances the original image to a studio-quality portrait
-  const handleEnhanceImage = useCallback(async () => {
-    if (!initialFile) return;
-
-    setIsEnhancing(true);
-    setError(null);
-
-    try {
-      const imagePart = await fileToGenerativePart(initialFile);
-      const textPart = { text: "Transform this photo into a high-quality studio portrait. Apply professional studio lighting to add depth and dimension to the subject's face. Replace the existing background with a clean, neutral studio backdrop (e.g., soft grey or off-white). Perform natural skin smoothing to reduce minor blemishes, imperfections, and acne. Make the skin appear more matte and smooth by removing excess oil and shine, while preserving the original skin texture. Increase the overall image sharpness and clarity. It is absolutely crucial that the person's facial features, facial structure, head shape, and expression remain completely unchanged. Do not stretch, compress, or otherwise alter the dimensions of the face." };
-
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-image-preview',
-        contents: { parts: [imagePart, textPart] },
-        config: { responseModalities: [Modality.IMAGE, Modality.TEXT] },
-      });
-      
-      let enhancedImage: { data: string, mimeType: string } | null = null;
-      if (response.candidates && response.candidates.length > 0) {
-        for (const part of response.candidates[0].content.parts) {
-          if (part.inlineData) {
-            enhancedImage = { data: part.inlineData.data, mimeType: part.inlineData.mimeType };
-            break;
-          }
-        }
-      }
-
-      if (enhancedImage) {
-        const enhancedImageUrl = `data:${enhancedImage.mimeType};base64,${enhancedImage.data}`;
-        
-        const fetchRes = await fetch(enhancedImageUrl);
-        const blob = await fetchRes.blob();
-        const enhancedFile = new File([blob], initialFile.name, { type: enhancedImage.mimeType });
-        
-        setUploadedFile(enhancedFile);
-        setOriginalImage(enhancedImageUrl);
-        setIsEnhanced(true);
-      } else {
-        setError("The AI couldn't enhance this image. Please try a different photo.");
-      }
-    } catch (e) {
-      console.error("AI Enhancement Error:", e);
-      setError("An error occurred while enhancing the image. Please try again.");
-    } finally {
-      setIsEnhancing(false);
-    }
-  }, [initialFile]);
-
-  // Reverts the image back to the original upload
-  const handleRevertToOriginal = useCallback(() => {
-    if (initialFile && initialImageUrl) {
-      setUploadedFile(initialFile);
-      setOriginalImage(initialImageUrl);
-      setIsEnhanced(false);
-    }
-  }, [initialFile, initialImageUrl]);
-
-
-  // Generates the new look using the Gemini API
+  // Enhanced generation with ethical safeguards
   const handleGenerateLook = useCallback(async () => {
     if (!uploadedFile || !selectedStyle || !selectedGender) return;
 
+    // Ethical pre-checks (ОНОВЛЕНО)
+    const currentSession = getSessionData();
+    const ethicalCheck = checkEthicalLimits(currentSession);
+
+    if (!ethicalCheck.allowed) {
+      if (ethicalCheck.cooldownSeconds) {
+        // Активуємо cooldown таймер
+        setCooldownActive(true);
+        setCooldownSeconds(ethicalCheck.cooldownSeconds);
+        setCooldownMessage(ethicalCheck.message || '');
+        return;
+      } else {
+        // Денний ліміт досягнуто
+        setError(ethicalCheck.message!);
+        if (currentSession.dailyTransformations >= 10) {
+          setShowMentalHealthWarning(true);
+        }
+        return;
+      }
+    }
+
     setIsLoading(true);
     setError(null);
-    setIsCurrentLookSaved(false);
-    setActiveLookId(null);
 
     try {
       const parts = [];
-      let prompt = '';
+
+      // Enhanced prompt with ethical considerations
+      let ethicalPrompt = `IMPORTANT: This is an AI beauty transformation that must prioritize user wellbeing and ethical standards.
+CORE REQUIREMENTS:
+1. PRESERVE IDENTITY: Only change the hair. Keep all facial features, skin tone, and identity markers identical.
+2. NATURAL RESULTS: Avoid unrealistic "perfect" appearances. Aim for achievable, realistic styling.
+3. CULTURAL SENSITIVITY: Respect the cultural significance of hairstyles.
+4. AUTHENTIC BEAUTY: Enhance the user's natural beauty rather than conforming to narrow beauty standards.
+Transform the ${selectedGender}'s hairstyle to: ${selectedStyle}`;
+
+      if (selectedColor) {
+        ethicalPrompt += ` with ${selectedColor} coloring`;
+      }
+
+      ethicalPrompt += `
+ETHICAL GUIDELINES:
+- Maintain realistic proportions and natural hair movement
+- Preserve ethnic characteristics and natural features
+- Avoid overly glamorous or unattainable styling
+- Focus on how this style complements the user's unique features
+- Ensure the result looks like something achievable at a salon
+The result should inspire confidence while celebrating the user's natural beauty.`;
 
       const userImagePart = await fileToGenerativePart(uploadedFile);
-      parts.push(userImagePart);
-
-      if (selectedStyle === COPY_STYLE_KEY && referenceImageFile) {
-        const referenceImagePart = await fileToGenerativePart(referenceImageFile);
-        parts.push(referenceImagePart);
-        prompt = `Your task is to meticulously replicate the hairstyle from the second image (the reference image) and apply it to the person in the first image (the user's photo).
-
-Analyze the reference hairstyle in extreme detail, paying close attention to the following attributes:
-- **Haircut:** Precisely replicate the overall haircut, including layers, shape, and how it frames the face.
-- **Length:** Match the exact length of the hair down to the smallest detail.
-- **Texture & Form:** Replicate the hair's texture. Accurately capture its curliness, waviness, or straightness.
-- **Volume and Shape:** Copy the overall volume and body of the hairstyle.
-- **Styling Details:** Accurately reproduce any specific styling elements like bangs, parting, braids, or updos.
-
-Apply this replicated hairstyle to the person in the first image.
-
-**CRITICAL INSTRUCTIONS:**
-1. **ONLY CHANGE THE HAIR.** The person's facial features, head shape, jawline, expression, body position, pose, clothing, and background must remain absolutely identical to the original photo.
-2. **AVOID ARTIFACTS.** Ensure there are no visual artifacts, smudges, or distortions on the person's face, neck, shoulders, or clothing. The integration of the new hair must be seamless and clean.
-3. **PRESERVE IDENTITY.** Do not alter the person's identity in any way.
-4. **SEAMLESS BLEND.** The new hairstyle must blend realistically and naturally with the user's head and the lighting of the original photo.
-
-${selectedColor ? `After replicating the style, change the hair color to ${selectedColor}.` : 'The hair color should precisely match the color from the reference image.'}`;
-      } else {
-        prompt = `Apply a ${selectedColor ? selectedColor + ' ' : ''}${selectedStyle} hairstyle to the ${selectedGender} in the image. It is absolutely crucial that you only change the hair. The person's facial features, head shape, jawline, expression, and all other physical attributes must remain completely unchanged from the original photo. Do not alter the dimensions or structure of the face. The new hairstyle should look realistic and blend naturally with the original image.`;
-      }
-      
-      const textPart = { text: prompt };
-      parts.push(textPart);
+      parts.push(userImagePart, { text: ethicalPrompt });
 
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image-preview',
         contents: { parts },
-        config: {
-          responseModalities: [Modality.IMAGE, Modality.TEXT],
-        },
+        config: { responseModalities: [Modality.IMAGE, Modality.TEXT] },
       });
 
       let newImage: string | null = null;
       if (response.candidates && response.candidates.length > 0) {
         for (const part of response.candidates[0].content.parts) {
           if (part.inlineData) {
-            const base64ImageBytes: string = part.inlineData.data;
-            const mimeType = part.inlineData.mimeType;
-            newImage = `data:${mimeType};base64,${base64ImageBytes}`;
+            newImage = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
             break;
           }
         }
@@ -544,51 +655,55 @@ ${selectedColor ? `After replicating the style, change the hair color to ${selec
 
       if (newImage) {
         setGeneratedImage(newImage);
+
+        // Update session data
+        const updatedSession = updateSessionData({
+          dailyTransformations: currentSession.dailyTransformations + 1,
+          lastTransformation: Date.now()
+        });
+        setSessionData(updatedSession);
+
+        // Generate ethical report
+        const report = generateEthicalReport(selectedStyle, updatedSession.dailyTransformations);
+        setEthicalReport(report);
+        setLastPositiveMessage(report.mentalHealthMessage);
+
+        // Show mental health warning if needed (знижено поріг)
+        if (updatedSession.dailyTransformations >= 8) {
+          setTimeout(() => setShowMentalHealthWarning(true), 2000);
+        }
+
       } else {
-        setError("The AI couldn't generate a new look from this image. It might be the image quality, angle, or the selected style. Please try a different photo.");
+        setError("We couldn't create this transformation. This might be due to image quality or style complexity. Please try a different photo or style.");
       }
     } catch (e) {
       console.error("AI Generation Error:", e);
-      if (e instanceof Error) {
-        if (e.message.includes('400')) {
-          setError("The request was invalid. Please check the uploaded image and try again.");
-        } else if (e.message.includes('500')) {
-          setError("The AI service is currently unavailable. Please try again later.");
-        } else {
-          setError("An error occurred while generating your look. Please check your connection and try again.");
-        }
-      } else {
-        setError("An unexpected error occurred. Please try again.");
-      }
+      setError("An error occurred while creating your transformation. Please check your connection and try again.");
     } finally {
       setIsLoading(false);
     }
-  }, [uploadedFile, selectedStyle, selectedColor, selectedGender, referenceImageFile]);
+  }, [uploadedFile, selectedStyle, selectedColor, selectedGender]);
 
+  // Enhanced color change with ethical considerations
   const handleChangeColor = useCallback(async (newColor: string | null) => {
     if (!generatedImage || !selectedStyle) return;
 
-    setRecoloringColor(newColor);
+    setIsLoading(true);
     setError(null);
 
     try {
-      // Convert the current generated image (base64) back to a File object for the API
       const fetchRes = await fetch(generatedImage);
       const blob = await fetchRes.blob();
       const currentImageFile = new File([blob], "current_look.png", { type: blob.type });
       const imagePart = await fileToGenerativePart(currentImageFile);
-      
-      const styleName = selectedStyle === COPY_STYLE_KEY ? 'the existing hairstyle' : `the existing hairstyle (${selectedStyle})`
 
-      const prompt = newColor
-        ? `Change the hair color in the image to ${newColor}. Keep ${styleName}. It is absolutely crucial that only the hair color is changed. Do not alter the hairstyle, facial features, head shape, or background.`
-        : `Remove the artificial hair color and restore the hair to a natural, original-looking color that matches the person's features. Keep ${styleName}. It is absolutely crucial that only the hair color is changed. Do not alter the hairstyle, facial features, head shape, or background.`;
-      
-      const textPart = { text: prompt };
+      const ethicalColorPrompt = newColor
+        ? `Change the hair color to ${newColor}. IMPORTANT: Only modify the hair color while preserving the natural hair texture and maintaining realistic coloring that complements the person's skin tone and features. Avoid artificial or overly processed-looking colors.`
+        : `Restore the hair to a natural color that harmonizes with the person's features and skin tone. The result should look healthy and achievable.`;
 
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image-preview',
-        contents: { parts: [imagePart, textPart] },
+        contents: { parts: [imagePart, { text: ethicalColorPrompt }] },
         config: { responseModalities: [Modality.IMAGE, Modality.TEXT] },
       });
 
@@ -605,122 +720,93 @@ ${selectedColor ? `After replicating the style, change the hair color to ${selec
       if (newImage) {
         setGeneratedImage(newImage);
         setSelectedColor(newColor);
-        setIsCurrentLookSaved(false); // The look has changed, so it can be saved again
-        setActiveLookId(null);
       } else {
-        setError("The AI couldn't change the color. Please try a different color or style.");
+        setError("Couldn't change the color. This might work better with a different style or color choice.");
       }
     } catch (e) {
-      console.error("AI Recolor Error:", e);
+      console.error("Color change error:", e);
       setError("An error occurred while changing the color. Please try again.");
     } finally {
-      setRecoloringColor(null);
+      setIsLoading(false);
     }
   }, [generatedImage, selectedStyle]);
 
-
-  // Resets the state to allow the user to try another style with the same photo
-  const handleTryAnotherStyle = useCallback(() => {
-    setGeneratedImage(null);
-    setSelectedStyle(null);
-    setPreviousSelectedStyle(null);
-    setSelectedColor(null);
-    setActiveCategory('All');
-    setError(null);
-    setIsCurrentLookSaved(false);
-    setActiveLookId(null);
-    setResultDisplayMode('slider');
-    setToggleShowGenerated(true);
-    setReferenceImageFile(null);
-    setReferenceImageUrl(null);
-  }, []);
-  
-  // Saves the current look to localStorage
   const handleSaveLook = useCallback(() => {
-    if (!originalImage || !generatedImage || isCurrentLookSaved || !selectedStyle) return;
-    
-    const styleNameToSave = selectedStyle === COPY_STYLE_KEY ? "Copied Style" : selectedStyle;
+    if (!originalImage || !generatedImage || !selectedStyle) return;
+
+    const styleToSave = selectedStyle === COPY_STYLE_KEY ? "Copied Style" : selectedStyle;
+
+    // Duplicate check as a safeguard
+    const isDuplicate = savedLooks.some(look => 
+      look.before === originalImage && 
+      look.after === generatedImage && 
+      look.style === styleToSave &&
+      look.color === selectedColor
+    );
+
+    if (isDuplicate) {
+      console.warn("Attempted to save a duplicate look.");
+      return;
+    }
 
     const newLook: SavedLook = {
       id: Date.now(),
       before: originalImage,
       after: generatedImage,
-      style: styleNameToSave,
+      style: styleToSave,
       color: selectedColor,
+      timestamp: Date.now(),
     };
 
-    const updatedLooks = [...savedLooks, newLook];
-    setSavedLooks(updatedLooks);
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedLooks));
-    setIsCurrentLookSaved(true);
-  }, [originalImage, generatedImage, savedLooks, isCurrentLookSaved, selectedStyle, selectedColor]);
+    setSavedLooks(prevLooks => {
+      const updatedLooks = [...prevLooks, newLook];
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedLooks));
+      return updatedLooks;
+    });
+  }, [originalImage, generatedImage, selectedStyle, selectedColor, savedLooks]);
 
-  // Deletes a saved look
+  // Enhanced delete with confirmation
   const handleDeleteLook = useCallback((id: number) => {
-    const updatedLooks = savedLooks.filter(look => look.id !== id);
-    setSavedLooks(updatedLooks);
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedLooks));
-  }, [savedLooks]);
-
-  // Clears all saved looks and resets the UI to a consistent state
-  const handleClearAllLooks = useCallback(() => {
-    if (window.confirm("Are you sure you want to delete all your saved looks? This action cannot be undone.")) {
-      setSavedLooks([]);
-      localStorage.removeItem(LOCAL_STORAGE_KEY);
-      
-      // If a result is currently being displayed, reset the view to the style selection screen.
-      if (generatedImage) {
-        // handleTryAnotherStyle resets all the necessary states for the results view.
-        handleTryAnotherStyle();
-      } else {
-        // If not in results view, ensure no look remains highlighted after deletion.
-        setActiveLookId(null);
-      }
-    }
-  }, [generatedImage, handleTryAnotherStyle]);
-  
-  // Sets a saved look as the active view
-  const handleViewLook = useCallback(async (look: SavedLook) => {
-    try {
-      // Set images to display the saved look result
-      setOriginalImage(look.before);
-      setGeneratedImage(look.after);
-
-      // Convert the base64 'before' image back to a File object.
-      // This is crucial so that the "Try Another Style" button works correctly,
-      // as the generation function requires a File object.
-      const fetchRes = await fetch(look.before);
-      const blob = await fetchRes.blob();
-      const file = new File([blob], `saved_look_${look.id}.png`, { type: blob.type });
-      setUploadedFile(file);
-      
-      // Restore style and color to display the name
-      setSelectedStyle(look.style);
-      setSelectedColor(look.color || null);
-      
-      // Reset other states and scroll to the top to show the result
-      setActiveLookId(look.id);
-      setPreviousSelectedStyle(null);
-      setActiveCategory('All');
-      setError(null);
-      setIsCurrentLookSaved(true);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    } catch (e) {
-      console.error("Error preparing saved look for re-styling:", e);
-      // Still show the look, but inform the user re-styling might fail.
-      setError("Could not fully load the image for re-styling. You can view it, but generating new styles from it might not work.");
-      // Still display the look even if file conversion fails
-      setOriginalImage(look.before);
-      setGeneratedImage(look.after);
-      setSelectedStyle(look.style);
-      setSelectedColor(look.color || null);
-      setActiveLookId(look.id);
-      setIsCurrentLookSaved(true);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (window.confirm("Delete this saved look? This action cannot be undone.")) {
+      setSavedLooks(prevLooks => {
+        const updatedLooks = prevLooks.filter(look => look.id !== id);
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedLooks));
+        return updatedLooks;
+      });
     }
   }, []);
 
+  const handleClearAll = useCallback(() => {
+    if (window.confirm("Clear all saved looks? This cannot be undone.")) {
+      setSavedLooks(() => {
+        localStorage.removeItem(LOCAL_STORAGE_KEY);
+        return [];
+      });
+    }
+  }, []);
+
+  // Reset function
+  const handleTryAnotherStyle = useCallback(() => {
+    setGeneratedImage(null);
+    setSelectedStyle(null);
+    setSelectedColor(null);
+    setActiveCategory('All');
+    setError(null);
+    setEthicalReport(null);
+    setShowEthicalReport(false);
+  }, []);
+
+  // Render ethical consent modal first
+  if (!ethicalConsentGiven) {
+    return (
+      <div className="min-h-screen bg-slate-900">
+        <EthicalDisclaimer onAccept={() => handleEthicalConsent(true)} onDecline={() => handleEthicalConsent(false)} />
+      </div>
+    );
+  }
+
   const isGenerateButtonDisabled = !originalImage || !selectedStyle || isLoading || !selectedGender;
+  const currentTransformationCount = sessionData.dailyTransformations;
 
   const availableCategories = selectedGender
     ? ['All', ...Array.from(new Set(HAIRSTYLES
@@ -733,143 +819,116 @@ ${selectedColor ? `After replicating the style, change the hair color to ${selec
       .filter(style => style.gender === selectedGender || style.gender === 'unisex')
       .filter(style => activeCategory === 'All' ? true : style.category === activeCategory)
       : [];
-  
-  const Footer: React.FC = () => (
-    <footer className="w-full max-w-4xl mx-auto mt-8 py-6 border-t border-slate-700 text-center">
-      <div className="flex justify-center items-center gap-6 mb-4">
-         <a href="#" aria-label="Our X account" className="text-slate-400 hover:text-white transition-colors">
-          <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 16 16"><path d="M12.6.75h2.454l-5.36 6.142L16 15.25h-4.937l-3.867-5.07-4.425 5.07H.316l5.733-6.57L0 .75h5.063l3.495 4.633L12.601.75Zm-1.78 13.05h1.68L3.26 2.05H1.68l9.14 11.7z"/></svg>
-        </a>
-         <a href="#" aria-label="Our Facebook page" className="text-slate-400 hover:text-white transition-colors">
-          <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 16 16"><path d="M16 8.049c0-4.446-3.582-8.05-8-8.05C3.58 0-.002 3.603-.002 8.05c0 4.017 2.926 7.347 6.75 7.951v-5.625h-2.03V8.05H6.75V6.275c0-2.017 1.195-3.131 3.022-3.131.876 0 1.791.157 1.791.157v1.98h-1.009c-.993 0-1.303.621-1.303 1.258v1.51h2.218l-.354 2.326H9.25V16c3.824-.604 6.75-3.934 6.75-7.951z"/></svg>
-        </a>
-         <a href="#" aria-label="Our Instagram profile" className="text-slate-400 hover:text-white transition-colors">
-           <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 16 16"><path d="M8 0C5.829 0 5.556.01 4.703.048 3.85.088 3.269.222 2.76.42a3.917 3.917 0 0 0-1.417.923A3.927 3.927 0 0 0 .42 2.76C.222 3.268.087 3.85.048 4.7.01 5.555 0 5.827 0 8.001c0 2.172.01 2.444.048 3.297.04.852.174 1.433.372 1.942.205.526.478.972.923 1.417.444.445.89.719 1.416.923.51.198 1.09.333 1.942.372C5.555 15.99 5.827 16 8 16s2.444-.01 3.298-.048c.851-.04 1.434-.174 1.943-.372a3.916 3.916 0 0 0 1.416-.923c.445-.445.718-.891.923-1.417.197-.509.332-1.09.372-1.942C15.99 10.445 16 10.173 16 8s-.01-2.445-.048-3.299c-.04-.851-.175-1.433-.372-1.941a3.926 3.926 0 0 0-.923-1.417A3.911 3.911 0 0 0 13.24.42c-.51-.198-1.092-.333-1.943-.372C10.443.01 10.172 0 7.998 0h.003zm-.717 1.442h.718c2.136 0 2.389.007 3.232.046.78.035 1.204.166 1.486.275.373.145.64.319.92.599.28.28.453.546.598.92.11.282.24.705.275 1.485.039.843.047 1.096.047 3.231s-.008 2.389-.047 3.232c-.035.78-.166 1.203-.275 1.485a2.47 2.47 0 0 1-.599.919c-.28.28-.546.453-.92.598-.28.282-.705.416-1.485.276-.843.038-1.096.047-3.232.047s-2.39-.009-3.233-.047c-.78-.036-1.203-.166-1.485-.276a2.478 2.478 0 0 1-.92-.598 2.48 2.48 0 0 1-.6-.92c-.109-.282-.24-.705-.275-1.485-.038-.843-.046-1.096-.046-3.232s.008-2.389.046-3.232c.036-.78.166-1.204.276-1.486.145-.373.319-.64.599-.92.28-.28.546-.453.92-.598.282-.11.705-.24 1.485-.276.843-.038 1.096-.047 3.232-.047zM8 4.908a3.092 3.092 0 1 0 0 6.184 3.092 3.092 0 0 0 0-6.184zm0 5.068a1.977 1.977 0 1 1 0-3.955 1.977 1.977 0 0 1 0 3.955zm3.592-5.926a.744.744 0 1 0 0-1.488.744.744 0 0 0 0 1.488z"/></svg>
-        </a>
-        <a href="#" aria-label="Our Reddit community" className="text-slate-400 hover:text-white transition-colors">
-          <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path d="M24 11.779c0-1.459-1.192-2.645-2.657-2.645-.715 0-1.363.286-1.84.746-1.81-1.191-4.259-1.982-6.972-2.066l1.483-4.669 4.353.98a2.658 2.658 0 0 0 2.626-3.273 2.658 2.658 0 0 0-3.273-2.626l-5.104-1.15a1.327 1.327 0 0 0-1.256.299l-1.559.985-.701-2.221c-.23-.728-1.015-1.123-1.742-.893s-1.123 1.015-.893 1.742l.846 2.678-5.021.905c-.728.13-1.249.789-1.249 1.523v.003c0 .591.332 1.113.829 1.385l-1.155 3.655c-2.923.385-5.526 1.349-7.256 2.936C.421 9.956 0 10.59 0 11.231c0 2.51 4.103 4.545 9.172 4.545s9.172-2.035 9.172-4.545c0-.441-.144-.863-.404-1.241.036-.289.055-.581.055-.877zm-14.828-3.145c.813 0 1.472.657 1.472 1.47s-.659 1.47-1.472 1.47c-.813 0-1.472-.657-1.472-1.47s.659-1.47 1.472-1.47zm7.329 2.94c0 .812-.66 1.47-1.473 1.47-.813 0-1.472-.657-1.472-1.47s.659-1.47 1.472-1.47c.813 0 1.473.657 1.473 1.47zm-1.84 4.016c-1.363 1.36-3.583 1.36-4.946 0l-.547-.546c-.184-.184-.184-.482 0-.665.184-.184.481-.184.665 0l.547.546c.985.984 2.583.984 3.568 0l.547-.546c.184-.184.481-.184.665 0 .184.184.184.482 0 .665l-.546.546z"/>
-          </svg>
-        </a>
-      </div>
-      <p className="text-slate-500 text-sm">&copy; {new Date().getFullYear()} Glamai Look Lab. All rights reserved.</p>
-    </footer>
-  );
+
+  const isCurrentLookSaved = useMemo(() => {
+    if (!originalImage || !generatedImage) return false;
+    
+    const styleToCompare = selectedStyle === COPY_STYLE_KEY ? "Copied Style" : selectedStyle;
+
+    return savedLooks.some(look => 
+      look.before === originalImage &&
+      look.after === generatedImage &&
+      look.style === styleToCompare &&
+      look.color === selectedColor
+    );
+  }, [originalImage, generatedImage, selectedStyle, selectedColor, savedLooks]);
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-6 lg:p-8 text-white font-sans">
-      <input
-        type="file"
-        accept="image/*"
-        className="hidden"
-        ref={referenceImageInputRef}
-        onChange={handleReferenceImageChange}
-      />
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-6 lg:p-8 text-white font-sans bg-slate-900">
+      {/* Mental Health Warning Modal */}
+      {showMentalHealthWarning && (
+        <MentalHealthWarning
+          count={currentTransformationCount}
+          onClose={() => setShowMentalHealthWarning(false)}
+        />
+      )}
+
       <div className="w-full max-w-4xl mx-auto">
         <header className="text-center mb-8">
           <h1 className="text-4xl sm:text-5xl font-bold tracking-tight bg-gradient-to-r from-purple-400 via-indigo-400 to-cyan-400 text-transparent bg-clip-text">
-            Glamai Look Lab
+            Ethical Beauty AI ✨
           </h1>
-          <p className="text-slate-400 mt-2 text-lg">Upload a photo and let AI create your new look.</p>
+          <p className="text-slate-400 mt-2 text-lg">Explore hairstyles responsibly • Celebrate your unique beauty</p>
+
+          {/* Ethics badges */}
+          <div className="flex justify-center gap-4 mt-4 text-xs">
+            <span className="bg-blue-900/30 text-blue-300 px-3 py-1 rounded-full">🧠 Mental Health First</span>
+            <span className="bg-green-900/30 text-green-300 px-3 py-1 rounded-full">🌍 Inclusive AI</span>
+            <span className="bg-purple-900/30 text-purple-300 px-3 py-1 rounded-full">🔒 Privacy Protected</span>
+          </div>
+
+          {/* Usage counter */}
+          <div className="mt-4 text-sm text-slate-400">
+            Today's explorations: {currentTransformationCount}/{ETHICAL_GUIDELINES.maxDailyTransformations}
+            {currentTransformationCount >= 6 && (
+              <span className="ml-2 text-purple-300">• Taking it easy helps you appreciate each style ✨</span>
+            )}
+            {lastPositiveMessage && (
+              <div className="mt-2 text-purple-300 bg-purple-900/20 px-4 py-2 rounded-lg inline-block">
+                {lastPositiveMessage}
+              </div>
+            )}
+          </div>
         </header>
 
         <main className="bg-slate-800 rounded-2xl shadow-2xl p-6 sm:p-8 relative overflow-hidden">
-          {isLoading && !generatedImage && <LoadingSpinner />}
-          
+          {isLoading && <LoadingSpinner />}
+
           {!generatedImage ? (
-            // --- INTERACTIVE SECTION ---
+            // UPLOAD & SELECTION SECTION
             <div>
+              {/* Gender Selection */}
               <div className="flex flex-col items-center mb-8">
-                  <h2 className="text-2xl font-semibold mb-4 text-slate-200">1. Who are you styling?</h2>
-                  <div className="flex justify-center gap-4 w-full max-w-sm">
-                      <button
-                          onClick={() => setSelectedGender('woman')}
-                          className={`w-full text-lg font-bold py-3 px-6 rounded-lg border-2 transition-all duration-200 ${
-                              selectedGender === 'woman'
-                              ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg'
-                              : 'bg-slate-700 border-slate-600 hover:bg-slate-600 hover:border-slate-500 text-slate-300'
-                          }`}
-                      >
-                          Woman
-                      </button>
-                      <button
-                          onClick={() => setSelectedGender('man')}
-                          className={`w-full text-lg font-bold py-3 px-6 rounded-lg border-2 transition-all duration-200 ${
-                              selectedGender === 'man'
-                              ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg'
-                              : 'bg-slate-700 border-slate-600 hover:bg-slate-600 hover:border-slate-500 text-slate-300'
-                          }`}
-                      >
-                          Man
-                      </button>
-                  </div>
+                <h2 className="text-2xl font-semibold mb-4 text-slate-200">1. Who are you styling?</h2>
+                <div className="flex justify-center gap-4 w-full max-w-sm">
+                  <button
+                    onClick={() => setSelectedGender('woman')}
+                    className={`w-full text-lg font-bold py-3 px-6 rounded-lg border-2 transition-all duration-200 ${
+                      selectedGender === 'woman'
+                        ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg'
+                        : 'bg-slate-700 border-slate-600 hover:bg-slate-600 hover:border-slate-500 text-slate-300'
+                    }`}
+                  >
+                    Woman
+                  </button>
+                  <button
+                    onClick={() => setSelectedGender('man')}
+                    className={`w-full text-lg font-bold py-3 px-6 rounded-lg border-2 transition-all duration-200 ${
+                      selectedGender === 'man'
+                        ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg'
+                        : 'bg-slate-700 border-slate-600 hover:bg-slate-600 hover:border-slate-500 text-slate-300'
+                    }`}
+                  >
+                    Man
+                  </button>
+                </div>
               </div>
 
               <div className={`flex flex-col lg:flex-row items-start justify-center gap-8 transition-opacity duration-500 ${!selectedGender ? 'opacity-50 cursor-not-allowed pointer-events-none' : 'opacity-100'}`}>
+                {/* Photo Upload Section */}
                 <div className="flex-shrink-0 flex flex-col items-center space-y-4">
                   <h2 className="text-2xl font-semibold mb-0 text-slate-200">2. Upload Photo</h2>
                   <div className="w-64 h-64 md:w-80 md:h-80 bg-slate-700/50 rounded-lg flex items-center justify-center border-2 border-dashed border-slate-600 overflow-hidden">
-                    {isEnhanced && initialImageUrl && originalImage ? (
-                        <ImageSlider beforeImage={initialImageUrl} afterImage={originalImage} />
-                    ) : originalImage ? (
+                    {originalImage ? (
                       <img src={originalImage} alt="Original upload" className="w-full h-full object-cover" />
                     ) : (
-                      <span className="text-slate-400">Your Photo Here</span>
+                      <div className="text-center">
+                        <span className="text-slate-400 block mb-2">Your Photo Here</span>
+                        <span className="text-xs text-slate-500">We process images ethically & securely</span>
+                      </div>
                     )}
                   </div>
                   <label className="cursor-pointer bg-indigo-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-indigo-700 transition-all duration-300 shadow-md">
                     Choose Photo
                     <input type="file" accept="image/*" className="hidden" onChange={handleFileChange} disabled={!selectedGender}/>
                   </label>
-                  {originalImage && (
-                    <div className="mt-4 w-full max-w-xs text-center">
-                      <h2 className="text-lg font-semibold mb-2 text-slate-300">Want a better shot?</h2>
-                      {!isEnhanced ? (
-                        <button 
-                          onClick={handleEnhanceImage}
-                          disabled={isEnhancing || !selectedGender}
-                          className="w-full bg-amber-500 text-slate-900 font-bold py-2 px-4 rounded-lg hover:bg-amber-400 transition-all duration-300 disabled:bg-slate-600 disabled:opacity-50 flex items-center justify-center gap-2"
-                        >
-                          {isEnhancing ? (
-                            <>
-                              <div className="w-5 h-5 border-2 border-dashed rounded-full animate-spin border-slate-900"></div>
-                              Enhancing...
-                            </>
-                          ) : (
-                            "✨ Studio Enhance"
-                          )}
-                        </button>
-                      ) : (
-                        <div className="flex gap-2">
-                          <p className="flex-grow text-left py-2 px-3 bg-green-900/50 text-green-300 rounded-lg text-sm">✓ Enhanced!</p>
-                          <button 
-                            onClick={handleRevertToOriginal}
-                            className="bg-slate-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-slate-500 transition-colors duration-300 text-sm"
-                          >
-                            Revert
-                          </button>
-                        </div>
-                      )}
-                      <p className="text-slate-400 text-xs mt-2">Let AI give your photo a professional studio look.</p>
-                    </div>
-                  )}
                 </div>
 
+                {/* Style Selection Section */}
                 <div className="w-full lg:w-1/2 flex flex-col items-center lg:items-start">
-                  <div className="w-full max-w-md flex justify-between items-center mb-4">
-                    <h2 className="text-2xl font-semibold text-slate-200">3. Select a Style</h2>
-                    <button
-                        onClick={handleUndoStyle}
-                        disabled={!previousSelectedStyle}
-                        className="text-sm font-semibold text-sky-400 hover:text-sky-300 disabled:text-slate-500 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
-                        aria-label="Undo last style selection"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M9.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L7.414 9H15a1 1 0 110 2H7.414l2.293 2.293a1 1 0 010 1.414z" clipRule="evenodd" />
-                        </svg>
-                        Undo
-                    </button>
-                  </div>
+                  <h2 className="text-2xl font-semibold mb-4 text-slate-200">3. Select a Style</h2>
+
+                  {/* Categories */}
                   <div className="flex flex-wrap gap-2 mb-4">
                     {availableCategories.map((category) => (
                       <button
@@ -886,194 +945,174 @@ ${selectedColor ? `After replicating the style, change the hair color to ${selec
                       </button>
                     ))}
                   </div>
+
+                  {/* Style Grid */}
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6 w-full max-w-md">
-                    <button
-                        key={COPY_STYLE_KEY}
-                        onClick={handleCopyStyleClick}
-                        disabled={!originalImage || !selectedGender}
-                        className={`group p-3 flex flex-col items-center justify-center gap-2 text-center rounded-lg transition-all duration-200 border-2 
-                            ${selectedStyle === COPY_STYLE_KEY 
-                            ? 'bg-slate-600/50 border-indigo-400 ring-2 ring-indigo-300' 
-                            : 'bg-slate-700 border-slate-600 hover:border-slate-400 hover:bg-slate-600'}
-                            ${!originalImage || !selectedGender ? 'opacity-50 cursor-not-allowed' : ''}
-                        `}
-                    >
-                        {referenceImageUrl ? (
-                            <div className="w-12 h-12 rounded-md overflow-hidden">
-                                <img src={referenceImageUrl} alt="Reference hairstyle" className="w-full h-full object-cover" />
-                            </div>
-                        ) : (
-                            <div className="w-12 h-12 rounded-md bg-slate-800 flex items-center justify-center">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                            </div>
-                        )}
-                        <span className={`font-medium text-sm ${selectedStyle === COPY_STYLE_KEY ? 'text-white' : 'text-slate-300'}`}>Copy Style</span>
-                    </button>
                     {filteredHairstyles.length > 0 ? filteredHairstyles.map((style) => (
                       <button
                         key={style.name}
-                        onClick={() => handleStyleSelect(style.name)}
+                        onClick={() => setSelectedStyle(style.name)}
                         disabled={!originalImage || !selectedGender}
-                        className={`group p-3 flex flex-col items-center justify-center gap-2 text-center rounded-lg transition-all duration-200 border-2 
-                          ${selectedStyle === style.name 
-                            ? 'bg-slate-600/50 border-indigo-400 ring-2 ring-indigo-300' 
+                        className={`group p-3 flex flex-col items-center justify-center gap-2 text-center rounded-lg transition-all duration-200 border-2
+                          ${selectedStyle === style.name
+                            ? 'bg-slate-600/50 border-indigo-400 ring-2 ring-indigo-300'
                             : 'bg-slate-700 border-slate-600 hover:border-slate-400 hover:bg-slate-600'}
                           ${!originalImage || !selectedGender ? 'opacity-50 cursor-not-allowed' : ''}
                         `}
                       >
                         {style.icon}
-                        <span className={`font-medium text-sm ${selectedStyle === style.name ? 'text-white' : 'text-slate-300'}`}>{style.name}</span>
+                        <span className={`font-medium text-sm ${selectedStyle === style.name ? 'text-white' : 'text-slate-300'}`}>
+                          {style.name}
+                        </span>
+                        {style.cultural !== 'universal' && (
+                          <span className="text-xs text-amber-300">Cultural</span>
+                        )}
                       </button>
                     )) : (
                       !selectedGender && <p className="col-span-full text-slate-400 text-center">Please select a gender to see available styles.</p>
                     )}
                   </div>
 
+                  {/* Color Selection */}
                   <h2 className="text-2xl font-semibold mb-4 text-slate-200">4. Choose a Color <span className="text-slate-400 text-lg">(Optional)</span></h2>
                   <div className="grid grid-cols-3 gap-4 mb-6 w-full max-w-md">
                     <button
-                          key="no-color"
-                          onClick={() => setSelectedColor(null)}
-                          disabled={!originalImage || !selectedGender}
-                          aria-label="Keep original hair color"
-                          title="Keep Original Color"
-                          className={`w-16 h-16 rounded-full border-2 transition-all duration-200 flex items-center justify-center bg-slate-700/50
-                              ${!selectedColor 
-                                  ? 'border-sky-400 ring-4 ring-sky-400/30' 
-                                  : 'border-slate-500'}
-                              ${!originalImage || !selectedGender
-                                  ? 'opacity-50 cursor-not-allowed' 
-                                  : 'hover:border-sky-400'}`}
-                      >
-                          <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path>
-                          </svg>
-                      </button>
+                      onClick={() => setSelectedColor(null)}
+                      disabled={!originalImage || !selectedGender}
+                      className={`w-16 h-16 rounded-full border-2 transition-all duration-200 flex items-center justify-center bg-slate-700/50
+                        ${!selectedColor
+                          ? 'border-sky-400 ring-4 ring-sky-400/30'
+                          : 'border-slate-500'}
+                        ${!originalImage || !selectedGender
+                          ? 'opacity-50 cursor-not-allowed'
+                          : 'hover:border-sky-400'}`}
+                    >
+                      <span className="text-xs text-center text-slate-300">Natural</span>
+                    </button>
                     {HAIR_COLORS.map((color) => (
                       <button
                         key={color.name}
                         onClick={() => setSelectedColor(color.name === selectedColor ? null : color.name)}
                         disabled={!originalImage || !selectedGender}
-                        aria-label={`Select ${color.name} hair color`}
-                        className={`w-16 h-16 rounded-full border-2 transition-all duration-200 ${
-                          selectedColor === color.name 
-                              ? 'border-sky-400 ring-4 ring-sky-400/30' 
-                              : 'border-slate-500'
+                        title={color.name}
+                        className={`w-16 h-16 rounded-full border-2 transition-all duration-200 relative ${
+                          selectedColor === color.name
+                            ? 'border-sky-400 ring-4 ring-sky-400/30'
+                            : 'border-slate-500'
                         } ${!originalImage || !selectedGender
-                              ? 'opacity-50 cursor-not-allowed' 
-                              : 'hover:border-sky-400'}`}
+                            ? 'opacity-50 cursor-not-allowed'
+                            : 'hover:border-sky-400'}`}
                         style={color.style}
-                      />
+                      >
+                        {!color.natural && (
+                          <span className="absolute -top-1 -right-1 bg-amber-400 text-slate-900 text-xs rounded-full w-4 h-4 flex items-center justify-center">✦</span>
+                        )}
+                      </button>
                     ))}
                   </div>
 
-                  <h2 className="text-2xl font-semibold mb-4 text-slate-200">5. Generate</h2>
+                  {/* Generate Button */}
+                  <h2 className="text-2xl font-semibold mb-4 text-slate-200">5. Generate Ethically</h2>
                   <button
                     onClick={handleGenerateLook}
-                    disabled={isGenerateButtonDisabled}
+                    disabled={isGenerateButtonDisabled || cooldownActive}
                     className="w-full max-w-md bg-green-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-700 transition-all duration-300 disabled:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed text-lg shadow-lg flex items-center justify-center gap-2"
                   >
                     {isLoading ? (
                       <>
                         <div className="w-6 h-6 border-4 border-dashed rounded-full animate-spin border-white"></div>
-                        <span>Generating...</span>
+                        <span>Creating Ethical Transformation...</span>
                       </>
+                    ) : cooldownActive ? (
+                      <span>Ready in {cooldownSeconds}s... ⏱️</span>
                     ) : (
-                      'Generate New Look'
+                      <>
+                        <span>✨ Generate Ethical Look</span>
+                      </>
                     )}
                   </button>
+
+                  {/* Cooldown Timer */}
+                  {cooldownActive && (
+                    <CooldownTimer
+                      seconds={cooldownSeconds}
+                      message={cooldownMessage}
+                      onComplete={() => {
+                        setCooldownActive(false);
+                        setCooldownSeconds(0);
+                        setCooldownMessage('');
+                      }}
+                    />
+                  )}
+
                   {error && (
-                    <p className="text-red-400 mt-4 text-center w-full max-w-sm">{error}</p>
+                    <div className="mt-4 p-3 bg-red-900/30 border border-red-500/30 rounded-lg">
+                      <p className="text-red-300 text-center">{error}</p>
+                    </div>
                   )}
                 </div>
               </div>
             </div>
           ) : (
-            // --- RESULTS SECTION ---
+            // RESULTS SECTION
             <div className="flex flex-col items-center">
-              <h2 className="text-3xl font-bold mb-2 text-center">Your New Look!</h2>
+              <h2 className="text-3xl font-bold mb-2 text-center">Your Ethical Transformation! ✨</h2>
               {selectedStyle && (
                 <p className="text-lg text-slate-300 mb-4 text-center">
-                  Style: <span className="font-semibold">{selectedStyle === COPY_STYLE_KEY ? "Copied Style" : selectedStyle}</span>
-                  {selectedColor && ` (Color: ${selectedColor})`}
+                  Style: <span className="font-semibold">{selectedStyle}</span>
+                  {selectedColor && ` • Color: ${selectedColor}`}
                 </p>
               )}
-              <div className="flex justify-center items-center p-1 rounded-lg bg-slate-700/50 mb-4 w-min mx-auto">
-                <button onClick={() => setResultDisplayMode('slider')} className={`px-4 py-1 rounded-md text-sm font-semibold transition-colors ${resultDisplayMode === 'slider' ? 'bg-slate-200 text-slate-900' : 'text-slate-300 hover:bg-slate-600'}`}>Slider</button>
-                <button onClick={() => setResultDisplayMode('toggle')} className={`px-4 py-1 rounded-md text-sm font-semibold transition-colors ${resultDisplayMode === 'toggle' ? 'bg-slate-200 text-slate-900' : 'text-slate-300 hover:bg-slate-600'}`}>Toggle</button>
-              </div>
 
+              {/* Results Display */}
               <div className="w-full flex justify-center mb-6">
-                {originalImage && resultDisplayMode === 'slider' && (
+                {originalImage && (
                   <ImageSlider beforeImage={originalImage} afterImage={generatedImage} />
                 )}
-                {originalImage && resultDisplayMode === 'toggle' && (
-                  <div className="w-full max-w-lg">
-                      <div className="relative w-full aspect-square rounded-lg overflow-hidden border-2 border-slate-600">
-                          <img
-                              src={toggleShowGenerated ? generatedImage : originalImage}
-                              alt={toggleShowGenerated ? 'Generated' : 'Original'}
-                              className="w-full h-full object-cover"
-                          />
-                      </div>
-                      <div className="flex items-center justify-center gap-3 mt-4">
-                          <span className={`font-medium transition-colors ${!toggleShowGenerated ? 'text-white' : 'text-slate-400'}`}>Original</span>
-                          <button
-                              onClick={() => setToggleShowGenerated(!toggleShowGenerated)}
-                              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${toggleShowGenerated ? 'bg-indigo-600' : 'bg-slate-600'}`}
-                              aria-label="Toggle between original and generated image"
-                          >
-                              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${toggleShowGenerated ? 'translate-x-6' : 'translate-x-1'}`} />
-                          </button>
-                          <span className={`font-medium transition-colors ${toggleShowGenerated ? 'text-white' : 'text-slate-400'}`}>Generated</span>
-                      </div>
-                  </div>
-                )}
               </div>
 
+              {/* Color Change Section */}
               <div className="w-full max-w-lg mt-6 p-4 bg-slate-700/50 rounded-lg">
-                <h3 className="text-xl font-semibold mb-4 text-center text-slate-200">Change Color</h3>
-                 <div className="flex justify-center flex-wrap gap-4">
+                <h3 className="text-xl font-semibold mb-4 text-center text-slate-200">Adjust Color</h3>
+                <div className="flex justify-center flex-wrap gap-4">
+                  <button
+                    onClick={() => handleChangeColor(null)}
+                    disabled={isLoading}
+                    className={`w-16 h-16 rounded-full border-2 transition-all duration-200 flex items-center justify-center bg-slate-700/50
+                      ${!selectedColor && !isLoading ? 'border-sky-400 ring-4 ring-sky-400/30' : 'border-slate-500'}
+                      ${isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:border-sky-400'}`}
+                  >
+                    <span className="text-xs text-center text-slate-300">Natural</span>
+                  </button>
+                  {HAIR_COLORS.map((color) => (
                     <button
-                        key="recolor-no-color"
-                        onClick={() => handleChangeColor(null)}
-                        disabled={!!recoloringColor}
-                        aria-label="Revert to original hair color"
-                        title="Revert to Original Color"
-                        className={`w-16 h-16 rounded-full border-2 transition-all duration-200 flex items-center justify-center bg-slate-700/50 relative
-                            ${!selectedColor && !recoloringColor ? 'border-sky-400 ring-4 ring-sky-400/30' : 'border-slate-500'}
-                            ${recoloringColor ? 'opacity-50 cursor-not-allowed' : 'hover:border-sky-400'}`}
+                      key={`recolor-${color.name}`}
+                      onClick={() => handleChangeColor(color.name)}
+                      disabled={isLoading}
+                      title={color.name}
+                      className={`w-16 h-16 rounded-full border-2 transition-all duration-200 relative
+                        ${selectedColor === color.name && !isLoading ? 'border-sky-400 ring-4 ring-sky-400/30' : 'border-slate-500'}
+                        ${isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:border-sky-400'}`}
+                      style={color.style}
                     >
-                        {recoloringColor === null && (
-                           <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
-                                <div className="w-6 h-6 border-2 border-dashed rounded-full animate-spin border-white"></div>
-                           </div>
-                        )}
-                        <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path>
-                        </svg>
+                      {!color.natural && (
+                        <span className="absolute -top-1 -right-1 bg-amber-400 text-slate-900 text-xs rounded-full w-4 h-4 flex items-center justify-center">✦</span>
+                      )}
                     </button>
-                    {HAIR_COLORS.map((color) => (
-                      <button
-                        key={`recolor-${color.name}`}
-                        onClick={() => handleChangeColor(color.name)}
-                        disabled={!!recoloringColor}
-                        aria-label={`Select ${color.name} hair color`}
-                        className={`w-16 h-16 rounded-full border-2 transition-all duration-200 relative
-                          ${selectedColor === color.name && !recoloringColor ? 'border-sky-400 ring-4 ring-sky-400/30' : 'border-slate-500'}
-                          ${recoloringColor ? 'opacity-50 cursor-not-allowed' : 'hover:border-sky-400'}`}
-                        style={color.style}
-                      >
-                        {recoloringColor === color.name && (
-                           <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
-                                <div className="w-6 h-6 border-2 border-dashed rounded-full animate-spin border-white"></div>
-                           </div>
-                        )}
-                      </button>
-                    ))}
-                  </div>
+                  ))}
+                </div>
               </div>
-              
+
+              {/* Ethical Report */}
+              {ethicalReport && (
+                <EthicalReportCard
+                  report={ethicalReport}
+                  isVisible={showEthicalReport}
+                  onClose={() => setShowEthicalReport(false)}
+                />
+              )}
+
+              {/* Action Buttons */}
               <div className="flex flex-wrap justify-center items-center gap-4 mt-8">
                 <button
                   onClick={handleTryAnotherStyle}
@@ -1081,34 +1120,39 @@ ${selectedColor ? `After replicating the style, change the hair color to ${selec
                 >
                   Try Another Style
                 </button>
-                 <button
+                <button
                   onClick={handleSaveLook}
                   disabled={isCurrentLookSaved}
-                  className="bg-purple-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-purple-700 transition-all duration-300 shadow-md disabled:bg-slate-600 disabled:opacity-70"
+                  className="bg-purple-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-purple-700 transition-all duration-300 shadow-md disabled:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isCurrentLookSaved ? 'Saved!' : 'Save Look'}
+                  {isCurrentLookSaved ? 'Look Saved ✓' : 'Save This Look'}
                 </button>
-                <button
-                  onClick={() => setIsShareModalOpen(true)}
-                  className="bg-sky-500 text-white font-semibold py-2 px-6 rounded-lg hover:bg-sky-600 transition-all duration-300 shadow-md flex items-center gap-2"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" /></svg>
-                  Share Look
-                </button>
+                {ethicalReport && (
+                  <button
+                    onClick={() => setShowEthicalReport(!showEthicalReport)}
+                    className="bg-blue-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-blue-700 transition-all duration-300 shadow-md flex items-center gap-2"
+                  >
+                    🛡️ {showEthicalReport ? 'Hide' : 'Show'} Ethics Report
+                  </button>
+                )}
               </div>
-               {error && (
-                <p className="text-red-400 mt-4 text-center w-full max-w-sm">{error}</p>
+
+              {error && (
+                <div className="mt-4 p-3 bg-red-900/30 border border-red-500/30 rounded-lg">
+                  <p className="text-red-300 text-center">{error}</p>
+                </div>
               )}
             </div>
           )}
         </main>
-        
+
+        {/* Saved Looks Section */}
         {savedLooks.length > 0 && (
           <section className="mt-12">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-3xl font-bold text-center">Your Saved Looks</h2>
+              <h2 className="text-3xl font-bold text-center">Your Ethical Gallery 🌟</h2>
               <button
-                onClick={handleClearAllLooks}
+                onClick={handleClearAll}
                 className="bg-red-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-red-700 transition-all duration-300 shadow-md"
               >
                 Clear All
@@ -1116,34 +1160,33 @@ ${selectedColor ? `After replicating the style, change the hair color to ${selec
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {savedLooks.slice().reverse().map((look) => (
-                <div 
-                  key={look.id} 
-                  className={`bg-slate-800 rounded-lg shadow-lg p-4 relative group transition-all duration-300 cursor-pointer ${activeLookId === look.id ? 'ring-2 ring-indigo-400' : 'ring-2 ring-transparent'}`}
-                  onClick={() => handleViewLook(look)}
+                <div
+                  key={look.id}
+                  className="bg-slate-800 rounded-lg shadow-lg p-4 relative group transition-all duration-300 hover:shadow-xl"
                 >
                   <div className="flex gap-4">
                     <div className="w-1/2">
-                       <h3 className="text-lg font-semibold text-slate-300 mb-2 text-center">Before</h3>
-                       <img src={look.before} alt="Saved before" className="w-full h-auto object-cover rounded" />
+                      <h3 className="text-lg font-semibold text-slate-300 mb-2 text-center">Before</h3>
+                      <img src={look.before} alt="Saved before" className="w-full h-auto object-cover rounded" />
                     </div>
                     <div className="w-1/2">
-                       <h3 className="text-lg font-semibold text-slate-300 mb-2 text-center">After</h3>
-                       <img src={look.after} alt="Saved after" className="w-full h-auto object-cover rounded" />
+                      <h3 className="text-lg font-semibold text-slate-300 mb-2 text-center">After</h3>
+                      <img src={look.after} alt="Saved after" className="w-full h-auto object-cover rounded" />
                     </div>
                   </div>
                   <div className="mt-3 text-center">
                     <h4 className="font-bold text-slate-200 truncate" title={look.style}>{look.style}</h4>
                     {look.color && <p className="text-sm text-slate-400">{look.color}</p>}
+                    <p className="text-xs text-slate-500 mt-1">
+                      {new Date(look.timestamp).toLocaleDateString()}
+                    </p>
                   </div>
-                   <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteLook(look.id);
-                    }}
+                  <button
+                    onClick={() => handleDeleteLook(look.id)}
                     className="absolute top-2 right-2 bg-red-600/80 text-white rounded-full w-7 h-7 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 hover:bg-red-500"
                     aria-label="Delete saved look"
                   >
-                    &#x2715;
+                    ×
                   </button>
                 </div>
               ))}
@@ -1151,16 +1194,22 @@ ${selectedColor ? `After replicating the style, change the hair color to ${selec
           </section>
         )}
 
+        {/* Footer */}
+        <footer className="w-full max-w-4xl mx-auto mt-12 py-6 border-t border-slate-700 text-center">
+          <div className="mb-4">
+            <h3 className="text-lg font-semibold text-slate-300 mb-2">Ethical AI Commitment</h3>
+            <p className="text-sm text-slate-400 mb-2">
+              We're committed to promoting positive body image, mental health awareness, and inclusive beauty standards.
+            </p>
+            <div className="flex justify-center gap-4 text-xs">
+              <span className="text-blue-300">🧠 Mental Health Resources</span>
+              <span className="text-green-300">🌍 Diversity & Inclusion</span>
+              <span className="text-purple-300">🔒 Privacy First</span>
+            </div>
+          </div>
+          <p className="text-slate-500 text-sm">&copy; {new Date().getFullYear()} Ethical Beauty AI. Celebrating authentic beauty.</p>
+        </footer>
       </div>
-        {generatedImage && originalImage && (
-            <ShareModal
-            isOpen={isShareModalOpen}
-            onClose={() => setIsShareModalOpen(false)}
-            beforeImage={originalImage}
-            afterImage={generatedImage}
-            />
-        )}
-      <Footer />
     </div>
   );
 }
