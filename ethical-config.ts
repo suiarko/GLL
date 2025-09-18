@@ -1,8 +1,7 @@
-// ethical-config.ts - Конфігурація етичних параметрів
+// ethical-config.ts - Configuration for ethical parameters
 
 export interface EthicalGuidelines {
   maxDailyTransformations: number;
-  cooldownPeriod: number;
   diversityScore: number;
   transparencyRequired: boolean;
   mentalHealthWarnings: boolean;
@@ -24,35 +23,34 @@ export interface DiversityMetrics {
 }
 
 export const ETHICAL_CONFIG: EthicalGuidelines = {
-  maxDailyTransformations: 12, // Збільшено для кращого UX
-  cooldownPeriod: 30 * 1000, // 30 секунд замість 5 хвилин
+  maxDailyTransformations: 12, // Increased for better UX
   diversityScore: 0.95,
   transparencyRequired: true,
   mentalHealthWarnings: true,
   biasDetection: true,
 };
 
-// Градуальний підхід до обмежень
+// A gradual approach to limits
 export const PROGRESSIVE_LIMITS = {
-  // Перші 5 трансформацій - без обмежень
+  // First 5 transformations - no limits
   phase1: { 
     transformations: 5, 
     cooldown: 0,
     message: null 
   },
-  // 6-8 трансформації - легкі нагадування
+  // 6-8 transformations - gentle reminders
   phase2: { 
     transformations: 3, 
-    cooldown: 15 * 1000, // 15 секунд
+    cooldown: 15 * 1000, // 15 seconds
     message: "Taking a quick moment between styles helps you appreciate each one! ✨" 
   },
-  // 9-12 трансформації - м'які попередження
+  // 9-12 transformations - soft warnings
   phase3: { 
     transformations: 4, 
-    cooldown: 45 * 1000, // 45 секунд
+    cooldown: 30 * 1000, // 30 seconds
     message: "You're exploring so many looks! Remember, you're beautiful in every style 💖" 
   },
-  // 12+ - делікатне обмеження
+  // 12+ - gentle limit
   phase4: { 
     transformations: 0, 
     cooldown: 0,
@@ -257,7 +255,7 @@ export const validateEthicalUsage = (sessionData: any) => {
   const violations = [];
   const currentCount = sessionData.dailyTransformations;
   
-  // Визначаємо поточну фазу
+  // Determine the current phase
   let currentPhase = PROGRESSIVE_LIMITS.phase1;
   let phaseStartCount = 0;
   
@@ -269,7 +267,7 @@ export const validateEthicalUsage = (sessionData: any) => {
     phaseStartCount = 5;
   }
   
-  // Перевіряємо денний ліміт
+  // Check daily limit
   if (currentCount >= ETHICAL_CONFIG.maxDailyTransformations) {
     violations.push({
       type: 'DAILY_LIMIT_REACHED',
@@ -280,7 +278,7 @@ export const validateEthicalUsage = (sessionData: any) => {
     });
   }
   
-  // Перевіряємо cooldown тільки для фаз 2 і 3
+  // Check cooldown for phases 2 and 3
   if (currentCount >= 6 && now - sessionData.lastTransformation < currentPhase.cooldown) {
     const remainingTime = Math.ceil((currentPhase.cooldown - (now - sessionData.lastTransformation)) / 1000);
     violations.push({
@@ -292,7 +290,7 @@ export const validateEthicalUsage = (sessionData: any) => {
     });
   }
   
-  // М'яке попередження про благополуччя
+  // Gentle wellbeing reminder
   if (currentCount >= 8 && currentCount < 12) {
     violations.push({
       type: 'WELLBEING_REMINDER',
@@ -318,8 +316,8 @@ export const generateEthicalRecommendations = (violations: any[], transformation
       type: 'GENTLE_BREAK',
       message: 'What a styling adventure! Come back tomorrow for more inspiration',
       tone: 'encouraging',
-      resources: MENTAL_HEALTH_RESOURCES.slice(0, 1), // Тільки один ресурс
-      showMascot: true // Можна додати милий персонаж
+      resources: MENTAL_HEALTH_RESOURCES.slice(0, 1), // Only one resource
+      showMascot: true // Can add a cute character
     });
   }
   
@@ -332,7 +330,7 @@ export const generateEthicalRecommendations = (violations: any[], transformation
     });
   }
   
-  // Персоналізовані поради на основі кількості
+  // Personalized advice based on count
   if (transformationCount >= 10) {
     recommendations.push({
       type: 'STYLE_ANALYSIS',
@@ -362,7 +360,7 @@ export const detectPotentialBias = async (originalImage: string, transformedImag
 };
 
 export const culturalContextProvider = (styleName: string) => {
-  const context = CULTURAL_SENSITIVITY_GUIDELINES.educationalContent[styleName];
+  const context = (CULTURAL_SENSITIVITY_GUIDELINES.educationalContent as any)[styleName];
   
   if (context) {
     return {
@@ -377,19 +375,4 @@ export const culturalContextProvider = (styleName: string) => {
     hasContext: false,
     message: `${styleName} is a contemporary or universal style with no specific cultural restrictions.`
   };
-};
-
-export default {
-  ETHICAL_CONFIG,
-  MENTAL_HEALTH_RESOURCES,
-  DIVERSITY_METRICS,
-  POSITIVE_AFFIRMATIONS,
-  CULTURAL_SENSITIVITY_GUIDELINES,
-  BIAS_DETECTION_PROMPTS,
-  TRANSPARENCY_DISCLOSURES,
-  USAGE_ANALYTICS,
-  validateEthicalUsage,
-  generateEthicalRecommendations,
-  detectPotentialBias,
-  culturalContextProvider
 };
