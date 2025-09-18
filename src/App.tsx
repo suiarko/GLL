@@ -12,24 +12,21 @@ const ai = new GoogleGenAI({
   apiKey: import.meta.env.VITE_GEMINI_API_KEY,
 });
 
-// Get the Gemini 2.5 Flash (nano banano) model
-const geminiModel = ai.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
 // Example Gemini API call with model config
 async function generateEthicalTransformation(image: string, selectedStyle: string, userAnalysis: string, culturalSensitivityCheck: string) {
   const prompt = buildEthicalPrompt(selectedStyle, userAnalysis, culturalSensitivityCheck);
-  return await geminiModel.generateContent({
+  return await ai.models.generateContent({
+    model: 'gemini-2.5-flash',
     contents: [
       { role: 'user', parts: [
         { text: prompt },
         { inlineData: { mimeType: 'image/png', data: image } }
       ] }
     ],
-    generationConfig: {
-      maxOutputTokens: 8192,
-      temperature: 0.3,
-      topP: 0.8
-    },
+    maxOutputTokens: 8192,
+    temperature: 0.3,
+    topP: 0.8
   });
 }
 
